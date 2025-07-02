@@ -3,8 +3,20 @@
 version = 4
 
 [[package]]
+name = "ast"
+version = "0.1.0"
+
+[[package]]
 name = "lexer"
 version = "0.1.0"
+
+[[package]]
+name = "parser"
+version = "0.1.0"
+dependencies = [
+ "ast",
+ "lexer",
+]
 
 [[package]]
 name = "wrc"

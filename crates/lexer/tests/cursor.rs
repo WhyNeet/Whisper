@@ -9,7 +9,7 @@ pub fn cursor_works() {
         stream.next(),
         Some(Token {
             start: 0,
-            len: 1,
+            end: 1,
             kind: TokenKind::Literal {
                 kind: LiteralKind::Int {
                     base: Base::Decimal,
@@ -23,7 +23,7 @@ pub fn cursor_works() {
         stream.next(),
         Some(Token {
             start: 2,
-            len: 1,
+            end: 3,
             kind: TokenKind::Star
         })
     );
@@ -32,7 +32,7 @@ pub fn cursor_works() {
         stream.next(),
         Some(Token {
             start: 4,
-            len: 2,
+            end: 6,
             kind: TokenKind::Literal {
                 kind: LiteralKind::Int {
                     base: Base::Decimal,
@@ -46,7 +46,7 @@ pub fn cursor_works() {
         stream.next(),
         Some(Token {
             start: 7,
-            len: 1,
+            end: 8,
             kind: TokenKind::Plus
         })
     );
@@ -55,7 +55,7 @@ pub fn cursor_works() {
         stream.next(),
         Some(Token {
             start: 9,
-            len: 1,
+            end: 10,
             kind: TokenKind::Literal {
                 kind: LiteralKind::Int {
                     base: Base::Decimal,

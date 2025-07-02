@@ -4,6 +4,7 @@ use crate::{
 };
 
 pub mod cursor;
+pub mod stream;
 pub mod token;
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
@@ -56,7 +57,7 @@ impl<'a> Cursor<'a> {
                 return Token {
                     kind: TokenKind::Eof,
                     start: self.consumed(),
-                    len: 0,
+                    end: self.consumed(),
                 };
             }
         };
@@ -134,7 +135,7 @@ impl<'a> Cursor<'a> {
 
         Token {
             start,
-            len: self.consumed() - start,
+            end: self.consumed(),
             kind: token_kind,
         }
     }

@@ -7,6 +7,13 @@ name = "ast"
 version = "0.1.0"
 
 [[package]]
+name = "js-codegen"
+version = "0.1.0"
+dependencies = [
+ "ast",
+]
+
+[[package]]
 name = "lexer"
 version = "0.1.0"
 
@@ -22,6 +29,7 @@ dependencies = [
 name = "wrc"
 version = "0.1.0"
 dependencies = [
+ "js-codegen",
  "lexer",
  "parser",
 ]

@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 lexer = { path = "../lexer" }
 parser = { path = "../parser" }
+js-codegen = { path = "../js-codegen" }

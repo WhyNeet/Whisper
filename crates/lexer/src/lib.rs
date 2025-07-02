@@ -8,7 +8,7 @@ pub mod stream;
 pub mod token;
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
-    let mut cursor = Cursor::new(input);
+    let mut cursor = Cursor::new(&input);
     std::iter::from_fn(move || {
         let token = cursor.next_token();
         if token.kind != TokenKind::Eof {

@@ -2,26 +2,39 @@ use crate::token::Token;
 use core::ops::{Deref, DerefMut};
 use std::iter::Peekable;
 
-pub struct TokenStream<'a, S: Iterator<Item = Token>> {
+pub struct TokenStream<'a> {
     source: &'a str,
-    iterator: Peekable<S>,
+    iterator: Peekable<Box<dyn Iterator<Item = Token> + 'a>>,
 }
 
-impl<'a, S: Iterator<Item = Token>> Deref for TokenStream<'a, S> {
-    type Target = Peekable<S>;
+impl<'a> TokenStream<'a> {
+    pub fn new(source: &'a str) -> Self {
+        let iterator = crate::tokenize(source);
+        let boxed: Box<dyn Iterator<Item = Token> + 'a> = Box::new(iterator);
+        let peekable = boxed.peekable();
+
+        Self {
+            source,
+            iterator: peekable,
+        }
+    }
+}
+
+impl<'a> Deref for TokenStream<'a> {
+    type Target = Peekable<Box<dyn Iterator<Item = Token> + 'a>>;
 
     fn deref(&self) -> &Self::Target {
         &self.iterator
     }
 }
 
-impl<'a, S: Iterator<Item = Token>> DerefMut for TokenStream<'a, S> {
+impl<'a> DerefMut for TokenStream<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.iterator
     }
 }
 
-impl<'a, S: Iterator<Item = Token>> TokenStream<'a, S> {
+impl<'a> TokenStream<'a> {
     pub fn source(&self) -> &str {
         self.source
     }

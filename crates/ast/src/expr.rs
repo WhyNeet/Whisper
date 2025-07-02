@@ -1,5 +1,6 @@
 use crate::ops::{BinaryOperator, UnaryOperator};
 
+#[derive(Debug, Clone)]
 pub enum Expression {
     Unary {
         operator: UnaryOperator,
@@ -15,6 +16,7 @@ pub enum Expression {
     Literal(Literal),
 }
 
+#[derive(Debug, Clone)]
 pub enum Literal {
     String(String),
     Integer(i64),

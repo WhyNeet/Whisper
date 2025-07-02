@@ -1,0 +1,6 @@
+expression = term ;
+term = factor { ( "+" | "-" ) factor } ;
+factor = unary { ( "* | "/" ) unary } ;
+unary = ( "!" | "-" ) primary | primary ;
+primary = IDENTIFIER | NUMBER | grouping | "true" | "false" ;
+grouping = "(" expression ")" ;

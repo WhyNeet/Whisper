@@ -1,5 +1,6 @@
 use ast::expr::{Expression, Literal};
 use ast::ops::{BinaryOperator, UnaryOperator};
+use ast::stmt::Statement;
 use core::unreachable;
 use lexer::stream::TokenStream;
 use lexer::token::{LiteralKind, Token, TokenKind};
@@ -14,8 +15,25 @@ impl<'a> Parser<'a> {
         Self { token_stream }
     }
 
-    pub fn run(&mut self) -> Expression {
-        self.expression()
+    pub fn run(&mut self) -> Vec<Statement> {
+        let mut stmts = vec![];
+
+        while self.token_stream.peek().is_some() {
+            stmts.push(self.statement());
+        }
+
+        stmts
+    }
+
+    fn statement(&mut self) -> Statement {
+        self.expr_stmt()
+    }
+
+    fn expr_stmt(&mut self) -> Statement {
+        let expr = self.expression();
+        self.matches(TokenKind::Semi).expect("Expected semicolon");
+
+        Statement::Expression(expr)
     }
 
     fn expression(&mut self) -> Expression {

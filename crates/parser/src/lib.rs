@@ -1,4 +1,5 @@
 use ast::expr::{Expression, Literal};
+use ast::module::Module;
 use ast::ops::{BinaryOperator, UnaryOperator};
 use ast::stmt::Statement;
 use core::unreachable;
@@ -15,14 +16,14 @@ impl<'a> Parser<'a> {
         Self { token_stream }
     }
 
-    pub fn run(&mut self) -> Vec<Statement> {
+    pub fn run(&mut self) -> Module {
         let mut stmts = vec![];
 
         while self.token_stream.peek().is_some() {
             stmts.push(self.statement());
         }
 
-        stmts
+        Module { stmts }
     }
 
     fn statement(&mut self) -> Statement {

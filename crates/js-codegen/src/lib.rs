@@ -1,10 +1,9 @@
 pub mod namegen;
-use ast::{
-    expr::{Expression, Literal},
-    module::Module,
-    stmt::Statement,
+use ast::{expr::Expression, module::Module, stmt::Statement};
+use common::{
+    literal::{Literal, LiteralValue},
+    types::Type,
 };
-use common::types::Type;
 
 use crate::namegen::Namegen;
 
@@ -158,11 +157,11 @@ impl JsCodegen {
     }
 
     fn generate_literal(&self, literal: &Literal) -> String {
-        match literal {
-            Literal::Bool(value) => value.to_string(),
-            Literal::Float(value) => value.to_string(),
-            Literal::Integer(value) => value.to_string(),
-            Literal::String(value) => value.to_string(),
+        match &literal.value {
+            LiteralValue::Bool(value) => value.to_string(),
+            LiteralValue::Float(value) => value.to_string(),
+            LiteralValue::Integer(value) => value.to_string(),
+            LiteralValue::String(value) => value.to_string(),
         }
     }
 }

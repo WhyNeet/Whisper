@@ -54,7 +54,35 @@ impl Checker {
                 body,
                 effects,
             } => self.fn_declaration(name, parameters, body, return_type, effects),
-            AstStatement::VariableDeclaration { name, is_mut, expr } => todo!(),
+            AstStatement::VariableDeclaration { name, is_mut, expr } => {
+                self.var_declaration(name, expr, *is_mut)
+            }
+        }
+    }
+
+    pub fn var_declaration(
+        &self,
+        name: &String,
+        expr: &AstExpression,
+        is_mut: bool,
+    ) -> TypedStatement {
+        let expr = self.expression(expr);
+
+        self.scope
+            .borrow()
+            .insert(name.to_string(), expr.ty.clone());
+
+        let expr_effects = expr.effects.clone();
+
+        let stmt = Statement::VariableDeclaration {
+            name: name.to_string(),
+            is_mut,
+            expr,
+        };
+
+        TypedStatement {
+            effects: expr_effects,
+            stmt,
         }
     }
 

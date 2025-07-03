@@ -33,7 +33,7 @@ impl JsCodegen {
 
     fn generate_stmt(&self, stmt: &Statement) -> String {
         match stmt {
-            Statement::Expression(expr) => self.generate_expr(expr, None) + ";",
+            Statement::Expression { expr, .. } => self.generate_expr(expr, None) + ";",
             Statement::FunctionDeclaration {
                 name,
                 parameters,
@@ -79,19 +79,32 @@ impl JsCodegen {
             Expression::Unary { operator, expr } => {
                 format!("{}{}", operator, self.generate_expr(expr, None))
             }
-            Expression::Block(stmts) => {
-                if stmts.is_empty() {
-                    return String::new();
-                }
-                let block = stmts.into_iter().map(|stmt| self.generate_stmt(stmt)).fold(
-                    String::new(),
-                    |mut acc, val| {
-                        acc.push_str(&val);
-                        acc
-                    },
-                );
+            Expression::Block { stmts, return_expr } => {
+                let stmts = if stmts.is_empty() {
+                    String::new()
+                } else {
+                    stmts.into_iter().map(|stmt| self.generate_stmt(stmt)).fold(
+                        String::new(),
+                        |mut acc, val| {
+                            acc.push_str(&val);
+                            acc
+                        },
+                    )
+                };
+                let (return_expr, store_in) = if let Some(return_expr) = return_expr {
+                    let store_in = self.namegen.get();
+                    let expr = self.generate_expr(return_expr, Some(&store_in));
 
-                format!("{{{block}}}")
+                    (expr, Some(store_in))
+                } else {
+                    (String::new(), None)
+                };
+
+                if let Some(store_in) = store_in {
+                    format!("let {store_in};{{{stmts}{return_expr}}}")
+                } else {
+                    format!("{{{stmts}}}")
+                }
             }
             Expression::FunctionCall { expr, args } => {
                 let (expr, store_in) = match expr.as_ref() {
@@ -124,7 +137,7 @@ impl JsCodegen {
         };
 
         if let Some(store_in) = store_in {
-            format!("let {store_in}={expr};")
+            format!("{store_in}={expr};")
         } else {
             expr
         }

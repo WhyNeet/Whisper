@@ -57,6 +57,34 @@ impl<'a> Parser<'a> {
     }
 
     fn fn_decl(&mut self) -> Statement {
+        let effects = if self.matches(TokenKind::OpenBrace).is_some() {
+            let mut effects = vec![];
+
+            if !self.matches(TokenKind::CloseBrace).is_some() {
+                let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+                let effect = self.token_stream.source()[ident.start..ident.end]
+                    .try_into()
+                    .unwrap();
+                effects.push(effect);
+
+                while self.matches(TokenKind::Comma).is_some() {
+                    let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+                    let effect = self.token_stream.source()[ident.start..ident.end]
+                        .try_into()
+                        .unwrap();
+
+                    effects.push(effect);
+                }
+
+                self.matches(TokenKind::CloseBrace)
+                    .expect("Expected closing brace");
+            }
+
+            effects
+        } else {
+            vec![]
+        };
+
         let name = self.matches(TokenKind::Ident).expect("Expected identifier");
         let name = self.token_stream.source()[name.start..name.end].to_string();
 
@@ -87,6 +115,7 @@ impl<'a> Parser<'a> {
             return_type,
             parameters: params,
             body,
+            effects,
         }
     }
 

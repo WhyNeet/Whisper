@@ -1,4 +1,6 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+use crate::effects::Effect;
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Int8,
     Int16,
@@ -20,6 +22,11 @@ pub enum Type {
     Bool,
     Char,
     Unit,
+    Fn {
+        return_type: Box<Type>,
+        params: Vec<Type>,
+        effects: Vec<Effect>,
+    },
 }
 
 impl Type {
@@ -56,6 +63,19 @@ impl Type {
 
     pub fn is_string(&self) -> bool {
         *self == Type::String
+    }
+}
+
+impl Type {
+    pub fn as_fn(self) -> Option<(Box<Type>, Vec<Type>, Vec<Effect>)> {
+        match self {
+            Self::Fn {
+                return_type,
+                params,
+                effects,
+            } => Some((return_type, params, effects)),
+            _ => None,
+        }
     }
 }
 

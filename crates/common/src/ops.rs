@@ -22,16 +22,16 @@ impl fmt::Display for UnaryOperator {
 }
 
 impl UnaryOperator {
-    pub fn accepts_type(&self, ty: Type) -> bool {
+    pub fn accepts_type(&self, ty: &Type) -> bool {
         match self {
             Self::Neg => ty.is_signed_numeric(),
-            Self::Not => ty == Type::Bool,
+            Self::Not => *ty == Type::Bool,
         }
     }
 
-    pub fn result_type(&self, ty: Type) -> Type {
+    pub fn result_type(&self, ty: &Type) -> Type {
         match self {
-            Self::Neg => ty,
+            Self::Neg => ty.clone(),
             Self::Not => Type::Bool,
         }
     }
@@ -96,36 +96,36 @@ impl BinaryOperator {
         }
     }
 
-    pub fn accepts_type(&self, left: Type, right: Type) -> bool {
+    pub fn accepts_type(&self, left: &Type, right: &Type) -> bool {
         match self {
             Self::Add => match left {
                 ty if ty.is_numeric() => ty == right,
-                Type::Char | Type::String => right == Type::Char || right.is_string(),
+                Type::Char | Type::String => *right == Type::Char || right.is_string(),
                 _ => false,
             },
             Self::Sub => left.is_numeric() && left == right,
             op if op.is_bitwise() => left.is_numeric() && left == right,
-            op if op.is_logic() => left == Type::Bool && left == right,
+            op if op.is_logic() => *left == Type::Bool && left == right,
             _ => false,
         }
     }
-    pub fn result_type(&self, left: Type, _right: Type) -> Type {
+    pub fn result_type(&self, left: &Type, _right: &Type) -> Type {
         match self {
             Self::Add => match left {
-                ty if ty.is_numeric() => ty,
+                ty if ty.is_numeric() => ty.clone(),
                 Type::String | Type::Char => Type::String,
                 _ => unreachable!(),
             },
             op if op.is_arithmetic() => match left {
-                ty if ty.is_numeric() => ty,
+                ty if ty.is_numeric() => ty.clone(),
                 _ => unreachable!(),
             },
             op if op.is_logic() => match left {
-                Type::Bool => left,
+                Type::Bool => left.clone(),
                 _ => unreachable!(),
             },
             op if op.is_bitwise() => match left {
-                ty if ty.is_numeric() => ty,
+                ty if ty.is_numeric() => ty.clone(),
                 _ => unreachable!(),
             },
             _ => unreachable!(),

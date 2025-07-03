@@ -98,9 +98,11 @@ impl<'a> Parser<'a> {
 
     fn expr_stmt(&mut self) -> Statement {
         let expr = self.expression();
-        self.matches(TokenKind::Semi).expect("Expected semicolon");
 
-        Statement::Expression(expr)
+        Statement::Expression {
+            expr,
+            has_semi: self.matches(TokenKind::Semi).is_some(),
+        }
     }
 
     fn expression(&mut self) -> Expression {
@@ -259,7 +261,36 @@ impl<'a> Parser<'a> {
             let stmt = self.statement();
             stmts.push(stmt);
         }
-        Expression::Block(stmts)
+
+        if !stmts.is_empty()
+            && !stmts[..stmts.len() - 1].iter().all(|stmt| match stmt {
+                Statement::Expression { has_semi, .. } => *has_semi,
+                _ => true,
+            })
+        {
+            panic!("Expected semicolon");
+        }
+
+        if !stmts.is_empty()
+            && match stmts.last().unwrap() {
+                Statement::Expression { has_semi, .. } => !has_semi,
+                _ => false,
+            }
+        {
+            let last = match stmts.pop().unwrap() {
+                Statement::Expression { expr, .. } => expr,
+                _ => unreachable!(),
+            };
+            Expression::Block {
+                stmts,
+                return_expr: Some(Box::new(last)),
+            }
+        } else {
+            Expression::Block {
+                stmts,
+                return_expr: None,
+            }
+        }
     }
 }
 

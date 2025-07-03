@@ -1,14 +1,21 @@
+pub mod namegen;
 use ast::{
     expr::{Expression, Literal},
     module::Module,
     stmt::Statement,
 };
 
-pub struct JsCodegen {}
+use crate::namegen::Namegen;
+
+pub struct JsCodegen {
+    namegen: Namegen,
+}
 
 impl JsCodegen {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            namegen: Namegen::default(),
+        }
     }
 }
 
@@ -24,22 +31,51 @@ impl JsCodegen {
     }
 
     fn generate_stmt(&self, stmt: &Statement) -> String {
-        (match stmt {
-          Statement::Expression(expr) => self.generate_expr(expr)
-        }) + ";"
+        match stmt {
+            Statement::Expression(expr) => self.generate_expr(expr, None) + ";",
+            Statement::FunctionDeclaration {
+                name,
+                parameters,
+                body,
+                ..
+            } => {
+                let params = parameters[..(parameters.len() - 1)]
+                    .into_iter()
+                    .map(|(name, _ty)| format!("{name}"))
+                    .fold(String::new(), |acc, val| format!("{acc}{val},"))
+                    + &parameters[parameters.len() - 1].0;
+                let return_value = self.namegen.get();
+                let body = self.generate_expr(body, Some(&return_value));
+                let body = format!("{body}return {return_value};");
+                format!("function {name}({params}){{{body}}}")
+            }
+        }
     }
 
-    fn generate_expr(&self, expr: &Expression) -> String {
-        match expr {
+    fn generate_expr(&self, expr: &Expression, store_in: Option<&str>) -> String {
+        let expr = match expr {
             Expression::Identifier(ident) => ident.to_string(),
-            Expression::Grouping(expr) => format!("({})", self.generate_expr(expr)),
+            Expression::Grouping(expr) => format!("({})", self.generate_expr(expr, None)),
             Expression::Literal(literal) => self.generate_literal(literal),
             Expression::Binary {
                 operator,
                 left,
                 right,
-            } => format!("{}{}{}", self.generate_expr(left), operator, self.generate_expr(right)),
-            Expression::Unary { operator, expr } => format!("{}{}", operator, self.generate_expr(expr))
+            } => format!(
+                "{}{}{}",
+                self.generate_expr(left, None),
+                operator,
+                self.generate_expr(right, None)
+            ),
+            Expression::Unary { operator, expr } => {
+                format!("{}{}", operator, self.generate_expr(expr, None))
+            }
+        };
+
+        if let Some(store_in) = store_in {
+            format!("let {store_in}={expr};")
+        } else {
+            expr
         }
     }
 

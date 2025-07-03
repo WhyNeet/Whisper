@@ -5,6 +5,13 @@ version = 4
 [[package]]
 name = "ast"
 version = "0.1.0"
+dependencies = [
+ "common",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
 
 [[package]]
 name = "js-codegen"
@@ -22,6 +29,7 @@ name = "parser"
 version = "0.1.0"
 dependencies = [
  "ast",
+ "common",
  "lexer",
 ]
 

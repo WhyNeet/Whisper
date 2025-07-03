@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = [ "crates/ast", "crates/js-codegen", "crates/lexer", "crates/parser","crates/wrc"]
+members = [ "crates/ast", "crates/common", "crates/js-codegen", "crates/lexer", "crates/parser","crates/wrc"]

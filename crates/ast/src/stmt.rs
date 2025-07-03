@@ -1,5 +1,5 @@
 use crate::expr::Expression;
-use common::types::Type;
+use common::{effects::Effect, types::Type};
 
 #[derive(Debug, Clone)]
 pub enum Statement {
@@ -12,6 +12,7 @@ pub enum Statement {
         return_type: Type,
         parameters: Vec<(String, Type)>,
         body: Expression,
+        effects: Vec<Effect>,
     },
     VariableDeclaration {
         name: String,

@@ -54,7 +54,7 @@ impl JsCodegen {
                 } else {
                     let return_value = self.namegen.get();
                     let body = self.generate_expr(body, Some(&return_value));
-                    format!("{body}return {return_value};")
+                    format!("let {return_value};{body}return {return_value};")
                 };
                 format!("function {name}({params}){{{body}}}")
             }

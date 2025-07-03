@@ -58,6 +58,16 @@ impl JsCodegen {
                 };
                 format!("function {name}({params}){{{body}}}")
             }
+            Statement::VariableDeclaration { name, expr, .. } => match expr {
+                Expression::Block { .. } => {
+                    let expr = self.generate_expr(expr, Some(name));
+                    format!("let {name};{expr}")
+                }
+                _ => {
+                    let expr = self.generate_expr(expr, None);
+                    format!("let {name}={expr};")
+                }
+            },
         }
     }
 
@@ -91,20 +101,19 @@ impl JsCodegen {
                         },
                     )
                 };
-                let (return_expr, store_in) = if let Some(return_expr) = return_expr {
-                    let store_in = self.namegen.get();
-                    let expr = self.generate_expr(return_expr, Some(&store_in));
+                let return_expr = if let Some(return_expr) = return_expr {
+                    if let Some(store_in) = store_in {
+                        let expr = self.generate_expr(return_expr, Some(store_in));
 
-                    (expr, Some(store_in))
+                        expr
+                    } else {
+                        String::new()
+                    }
                 } else {
-                    (String::new(), None)
+                    String::new()
                 };
 
-                if let Some(store_in) = store_in {
-                    format!("let {store_in};{{{stmts}{return_expr}}}")
-                } else {
-                    format!("{{{stmts}}}")
-                }
+                format!("{{{stmts}{return_expr}}}")
             }
             Expression::FunctionCall { expr, args } => {
                 let (expr, store_in) = match expr.as_ref() {
@@ -136,8 +145,12 @@ impl JsCodegen {
             }
         };
 
-        if let Some(store_in) = store_in {
-            format!("{store_in}={expr};")
+        if !expr.starts_with("{") {
+            if let Some(store_in) = store_in {
+                format!("{store_in}={expr};")
+            } else {
+                expr
+            }
         } else {
             expr
         }

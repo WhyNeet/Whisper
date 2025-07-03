@@ -30,8 +30,29 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> Statement {
         if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
             self.fn_decl()
+        } else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
+            self.var_decl()
         } else {
             self.expr_stmt()
+        }
+    }
+
+    fn var_decl(&mut self) -> Statement {
+        let is_mut = self.matches(TokenKind::Keyword(Keyword::Mut)).is_some();
+
+        let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+
+        self.matches(TokenKind::Eq).expect("Expected `=`");
+
+        let expr = self.expression();
+
+        self.matches(TokenKind::Semi).expect("Expected semicolon");
+
+        Statement::VariableDeclaration {
+            name: ident,
+            is_mut,
+            expr,
         }
     }
 

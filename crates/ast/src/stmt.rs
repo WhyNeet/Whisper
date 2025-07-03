@@ -13,4 +13,9 @@ pub enum Statement {
         parameters: Vec<(String, Type)>,
         body: Expression,
     },
+    VariableDeclaration {
+        name: String,
+        is_mut: bool,
+        expr: Expression,
+    },
 }

@@ -3,7 +3,10 @@ use common::types::Type;
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Expression(Expression),
+    Expression {
+        expr: Expression,
+        has_semi: bool,
+    },
     FunctionDeclaration {
         name: String,
         return_type: Type,

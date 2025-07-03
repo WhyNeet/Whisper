@@ -17,7 +17,10 @@ pub enum Expression {
     Grouping(Box<Expression>),
     Identifier(String),
     Literal(Literal),
-    Block(Vec<Statement>),
+    Block {
+        stmts: Vec<Statement>,
+        return_expr: Option<Box<Expression>>,
+    },
     FunctionCall {
         expr: Box<Expression>,
         args: Vec<Expression>,

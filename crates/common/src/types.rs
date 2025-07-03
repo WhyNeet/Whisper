@@ -4,16 +4,59 @@ pub enum Type {
     Int16,
     Int32,
     Int64,
+    /// Inferred Int
+    IntN,
     UInt8,
     UInt16,
     UInt32,
     UInt64,
+    /// Inferred UInt
+    UIntN,
     Float32,
     Float64,
+    /// Inferred Float
+    FloatN,
     String,
     Bool,
     Char,
     Unit,
+}
+
+impl Type {
+    pub fn is_numeric(&self) -> bool {
+        match self {
+            Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::UInt8
+            | Self::UInt16
+            | Self::UInt32
+            | Self::UInt64
+            | Self::Float32
+            | Self::Float64
+            | Self::IntN
+            | Self::UIntN => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_signed_numeric(&self) -> bool {
+        match self {
+            Self::Int8
+            | Self::Int16
+            | Self::Int32
+            | Self::Int64
+            | Self::Float32
+            | Self::Float64
+            | Self::IntN => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        *self == Type::String
+    }
 }
 
 impl TryFrom<&str> for Type {

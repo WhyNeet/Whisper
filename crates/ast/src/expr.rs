@@ -1,5 +1,8 @@
 use crate::stmt::Statement;
-use common::ops::{BinaryOperator, UnaryOperator};
+use common::{
+    literal::Literal,
+    ops::{BinaryOperator, UnaryOperator},
+};
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -23,12 +26,4 @@ pub enum Expression {
         expr: Box<Expression>,
         args: Vec<Expression>,
     },
-}
-
-#[derive(Debug, Clone)]
-pub enum Literal {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Bool(bool),
 }

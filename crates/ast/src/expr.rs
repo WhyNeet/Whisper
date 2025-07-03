@@ -18,6 +18,10 @@ pub enum Expression {
     Identifier(String),
     Literal(Literal),
     Block(Vec<Statement>),
+    FunctionCall {
+        expr: Box<Expression>,
+        args: Vec<Expression>,
+    },
 }
 
 #[derive(Debug, Clone)]

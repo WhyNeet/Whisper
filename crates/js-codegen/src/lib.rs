@@ -39,6 +39,7 @@ impl JsCodegen {
                 parameters,
                 body,
                 return_type,
+                ..
             } => {
                 let params = if parameters.is_empty() {
                     String::new()

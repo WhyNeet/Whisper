@@ -4,6 +4,7 @@ use ast::{
     module::Module,
     stmt::Statement,
 };
+use common::types::Type;
 
 use crate::namegen::Namegen;
 
@@ -37,16 +38,24 @@ impl JsCodegen {
                 name,
                 parameters,
                 body,
-                ..
+                return_type,
             } => {
-                let params = parameters[..(parameters.len() - 1)]
-                    .into_iter()
-                    .map(|(name, _ty)| format!("{name}"))
-                    .fold(String::new(), |acc, val| format!("{acc}{val},"))
-                    + &parameters[parameters.len() - 1].0;
-                let return_value = self.namegen.get();
-                let body = self.generate_expr(body, Some(&return_value));
-                let body = format!("{body}return {return_value};");
+                let params = if parameters.is_empty() {
+                    String::new()
+                } else {
+                    parameters[..(parameters.len() - 1)]
+                        .into_iter()
+                        .map(|(name, _ty)| format!("{name}"))
+                        .fold(String::new(), |acc, val| format!("{acc}{val},"))
+                        + &parameters[parameters.len() - 1].0
+                };
+                let body = if *return_type == Type::Unit {
+                    self.generate_expr(body, None)
+                } else {
+                    let return_value = self.namegen.get();
+                    let body = self.generate_expr(body, Some(&return_value));
+                    format!("{body}return {return_value};")
+                };
                 format!("function {name}({params}){{{body}}}")
             }
         }
@@ -69,6 +78,20 @@ impl JsCodegen {
             ),
             Expression::Unary { operator, expr } => {
                 format!("{}{}", operator, self.generate_expr(expr, None))
+            }
+            Expression::Block(stmts) => {
+                if stmts.is_empty() {
+                    return String::new();
+                }
+                let block = stmts.into_iter().map(|stmt| self.generate_stmt(stmt)).fold(
+                    String::new(),
+                    |mut acc, val| {
+                        acc.push_str(&val);
+                        acc
+                    },
+                );
+
+                format!("{{{block}}}")
             }
         };
 

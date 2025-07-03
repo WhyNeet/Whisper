@@ -1,6 +1,6 @@
 use crate::{
     cursor::Cursor,
-    token::{Base, Keyword, LiteralKind, Token, TokenKind},
+    token::{Base, LiteralKind, Token, TokenKind},
 };
 
 pub mod cursor;
@@ -138,11 +138,10 @@ impl<'a> Cursor<'a> {
                     }
                 }
 
-                match s.as_str() {
-                    "fn" => TokenKind::Keyword(Keyword::Fn),
-                    "let" => TokenKind::Keyword(Keyword::Let),
-                    _ => TokenKind::Ident,
-                }
+                s.as_str()
+                    .try_into()
+                    .map(TokenKind::Keyword)
+                    .unwrap_or(TokenKind::Ident)
             }
             _ => TokenKind::Unknown,
         };

@@ -140,4 +140,18 @@ pub enum Base {
 pub enum Keyword {
     Let,
     Fn,
+    Mut,
+}
+
+impl TryFrom<&str> for Keyword {
+    type Error = &'static str;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "fn" => Ok(Self::Fn),
+            "let" => Ok(Self::Let),
+            "mut" => Ok(Self::Mut),
+            _ => Err("not a keyword."),
+        }
+    }
 }

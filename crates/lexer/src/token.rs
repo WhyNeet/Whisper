@@ -19,6 +19,9 @@ pub enum TokenKind {
     /// An identifier.
     Ident,
 
+    /// A keyword
+    Keyword(Keyword),
+
     /// Literals, e.g. `12u8`, `1.0e-40`, `b"123"`. Note that `_` is an invalid
     /// suffix, but may be present here on string and float literals. Users of
     /// this type will need to check for and reject that case.
@@ -87,6 +90,9 @@ pub enum TokenKind {
     /// `%`
     Percent,
 
+    /// ->
+    RArrow,
+
     /// Unknown token, not expected by the lexer, e.g. "№"
     Unknown,
 
@@ -128,4 +134,10 @@ pub enum Base {
     Decimal = 10,
     /// Literal starts with "0x".
     Hexadecimal = 16,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Keyword {
+    Let,
+    Fn,
 }

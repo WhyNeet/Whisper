@@ -1,6 +1,6 @@
 use crate::{
     cursor::Cursor,
-    token::{Base, LiteralKind, Token, TokenKind},
+    token::{Base, Keyword, LiteralKind, Token, TokenKind},
 };
 
 pub mod cursor;
@@ -75,7 +75,13 @@ impl<'a> Cursor<'a> {
             '}' => TokenKind::CloseBrace,
             '+' => TokenKind::Plus,
             '!' => TokenKind::Bang,
-            '-' => TokenKind::Minus,
+            '-' => match self.peek() {
+                Some('>') => {
+                    self.next();
+                    TokenKind::RArrow
+                }
+                _ => TokenKind::Minus,
+            },
             '*' => TokenKind::Star,
             '/' => match self.peek() {
                 Some('/') => {
@@ -120,15 +126,23 @@ impl<'a> Cursor<'a> {
                 }
             }
             c if c.is_ascii() => {
+                let mut s = String::from(c);
                 while !self.is_eof()
                     && self
                         .peek()
-                        .map(|c| c.is_ascii_alphabetic() || c.is_ascii_digit())
+                        .map(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
                         .unwrap_or(false)
                 {
-                    self.next();
+                    if let Some(c) = self.next() {
+                        s.push(c);
+                    }
                 }
-                TokenKind::Ident
+
+                match s.as_str() {
+                    "fn" => TokenKind::Keyword(Keyword::Fn),
+                    "let" => TokenKind::Keyword(Keyword::Let),
+                    _ => TokenKind::Ident,
+                }
             }
             _ => TokenKind::Unknown,
         };

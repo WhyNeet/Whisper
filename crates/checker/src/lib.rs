@@ -5,7 +5,7 @@ use std::{cell::RefCell, iter, rc::Rc};
 use ast::{
     expr::Expression as AstExpression, module::Module as AstModule, stmt::Statement as AstStatement,
 };
-use common::types::Type;
+use common::{effects::Effect, types::Type};
 use tcast::{
     expr::{Expression, TypedExpression},
     module::Module,
@@ -53,8 +53,65 @@ impl Checker {
                 parameters,
                 body,
                 effects,
-            } => todo!(),
+            } => self.fn_declaration(name, parameters, body, return_type, effects),
             AstStatement::VariableDeclaration { name, is_mut, expr } => todo!(),
+        }
+    }
+
+    pub fn fn_declaration(
+        &self,
+        name: &String,
+        parameters: &Vec<(String, Type)>,
+        body: &AstExpression,
+        return_type: &Type,
+        effects: &Vec<Effect>,
+    ) -> TypedStatement {
+        let prev_scope = self
+            .scope
+            .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
+        let scope = self.scope.borrow();
+        for (name, ty) in parameters {
+            scope.insert(name.clone(), ty.clone());
+        }
+        drop(scope);
+        let body = self.expression(body);
+
+        if body.ty != *return_type {
+            panic!(
+                "Expected `{name}` to return type `{return_type:?}`, but got: {:?}",
+                body.ty
+            );
+        }
+
+        body.effects.iter().for_each(|effect| {
+            if !effects.contains(effect) {
+                panic!("Missing `{effect}` in function signature.");
+            }
+        });
+
+        self.scope.replace(prev_scope);
+
+        let fn_type = Type::Fn {
+            return_type: Box::new(return_type.clone()),
+            params: parameters.into_iter().map(|(_, ty)| ty.clone()).collect(),
+            effects: effects.clone(),
+        };
+
+        if self.scope.borrow().insert(name.clone(), fn_type) {
+            panic!("Function `{name}` is already defined.");
+        }
+
+        let stmt = Statement::FunctionDeclaration {
+            name: name.clone(),
+            return_type: return_type.clone(),
+            parameters: parameters.clone(),
+            body,
+            effects: effects.clone(),
+        };
+
+        TypedStatement {
+            effects: effects.clone(),
+            stmt,
         }
     }
 
@@ -75,7 +132,7 @@ impl Checker {
                     .map(Box::new);
                 let return_type = return_expr
                     .as_ref()
-                    .map(|expr| expr.ty)
+                    .map(|expr| expr.ty.clone())
                     .unwrap_or(Type::Unit);
                 let return_expr_effects = return_expr.as_ref().map(|expr| expr.effects.as_slice());
                 let effects = stmts.iter().map(|stmt| stmt.effects.as_slice());
@@ -110,8 +167,8 @@ impl Checker {
 
                 let effects = [left.effects.as_slice(), right.effects.as_slice()].concat();
 
-                let left_ty = left.ty;
-                let right_ty = right.ty;
+                let left_ty = left.ty.clone();
+                let right_ty = right.ty.clone();
 
                 let expr = Expression::Binary {
                     operator: *operator,
@@ -119,7 +176,7 @@ impl Checker {
                     right: Box::new(right),
                 };
 
-                if !operator.accepts_type(left_ty, right_ty) {
+                if !operator.accepts_type(&left_ty, &right_ty) {
                     panic!(
                         "{operator} cannot be used on types `{:?}` and `{:?}`",
                         left_ty, right_ty
@@ -129,7 +186,7 @@ impl Checker {
                 TypedExpression {
                     effects,
                     expr,
-                    ty: operator.result_type(left_ty, right_ty),
+                    ty: operator.result_type(&left_ty, &right_ty),
                 }
             }
             AstExpression::Unary { operator, expr } => {
@@ -137,11 +194,11 @@ impl Checker {
 
                 let effects = expr.effects.clone();
 
-                if !operator.accepts_type(expr.ty) {
+                if !operator.accepts_type(&expr.ty) {
                     panic!("{operator} cannot be used on type `{:?}`", expr.ty);
                 }
 
-                let expr_ty = operator.result_type(expr.ty);
+                let expr_ty = operator.result_type(&expr.ty);
 
                 let expr = Expression::Unary {
                     operator: *operator,
@@ -156,7 +213,7 @@ impl Checker {
             }
             AstExpression::Grouping(expr) => {
                 let expr = self.expression(expr);
-                let expr_ty = expr.ty;
+                let expr_ty = expr.ty.clone();
                 let effects = expr.effects.clone();
 
                 let expr = Expression::Grouping(Box::new(expr));
@@ -168,7 +225,7 @@ impl Checker {
                 }
             }
             AstExpression::Literal(literal) => {
-                let ty = literal.ty;
+                let ty = literal.ty.clone();
 
                 TypedExpression {
                     expr: Expression::Literal(literal.clone()),
@@ -188,7 +245,54 @@ impl Checker {
                 }
             }
             AstExpression::FunctionCall { expr, args } => {
-                todo!()
+                let fn_name = match expr.as_ref() {
+                    AstExpression::Identifier(ident) => ident,
+                    other => panic!("`{other:?}` is not callable."),
+                };
+
+                let Some(fn_type) = self.scope.borrow().get(fn_name) else {
+                    panic!("Function `{fn_name}` is not present in current scope.");
+                };
+
+                let Some((fn_return_type, fn_params, fn_effects)) = fn_type.clone().as_fn() else {
+                    panic!("`{fn_name}` is not a function.")
+                };
+
+                let args = args
+                    .into_iter()
+                    .map(|arg| self.expression(arg))
+                    .collect::<Vec<_>>();
+                if args.len() != fn_params.len() {
+                    panic!(
+                        "Invalid number of arguments: expected {}, found {}",
+                        args.len(),
+                        fn_params.len()
+                    );
+                }
+
+                for i in 0..args.len() {
+                    if args[i].ty != fn_params[i] {
+                        panic!(
+                            "Invalid argument type at position {i}: expected `{:?}`, found `{:?}`",
+                            fn_params[i], args[i].ty
+                        );
+                    }
+                }
+
+                let expr = Expression::FunctionCall {
+                    expr: Box::new(TypedExpression {
+                        effects: vec![],
+                        ty: fn_type,
+                        expr: Expression::Identifier(fn_name.to_string()),
+                    }),
+                    args,
+                };
+
+                TypedExpression {
+                    effects: fn_effects,
+                    expr,
+                    ty: fn_return_type.as_ref().clone(),
+                }
             }
         }
     }

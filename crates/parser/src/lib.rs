@@ -212,6 +212,8 @@ impl<'a> Parser<'a> {
         } else if let Some(token) = self.matches(TokenKind::Ident) {
             let ident = self.token_stream.source()[token.start..token.end].to_string();
             Expression::Identifier(ident)
+        } else if let Some(token) = self.matches(TokenKind::OpenBrace) {
+            self.block()
         } else {
             todo!()
         }
@@ -222,6 +224,15 @@ impl<'a> Parser<'a> {
         self.matches(TokenKind::CloseParen)
             .expect("Expected closing parenthesis");
         Expression::Grouping(Box::new(expr))
+    }
+
+    fn block(&mut self) -> Expression {
+        let mut stmts = vec![];
+        while !self.matches(TokenKind::CloseBrace).is_some() {
+            let stmt = self.statement();
+            stmts.push(stmt);
+        }
+        Expression::Block(stmts)
     }
 }
 

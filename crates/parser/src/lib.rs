@@ -164,10 +164,37 @@ impl<'a> Parser<'a> {
                     TokenKind::Minus => UnaryOperator::Neg,
                     _ => unreachable!(),
                 },
-                expr: Box::new(self.primary()),
+                expr: Box::new(self.fn_call()),
             }
         } else {
-            self.primary()
+            self.fn_call()
+        }
+    }
+
+    fn fn_call(&mut self) -> Expression {
+        let expr = self.primary();
+
+        if self.matches(TokenKind::OpenParen).is_some() {
+            let mut args = vec![];
+
+            if !self.matches(TokenKind::CloseParen).is_some() {
+                let arg = self.expression();
+                args.push(arg);
+
+                while self.matches(TokenKind::Comma).is_some() {
+                    args.push(self.expression());
+                }
+            }
+
+            self.matches(TokenKind::CloseParen)
+                .expect("Expected closing parenthesis");
+
+            Expression::FunctionCall {
+                expr: Box::new(expr),
+                args,
+            }
+        } else {
+            expr
         }
     }
 
@@ -212,7 +239,7 @@ impl<'a> Parser<'a> {
         } else if let Some(token) = self.matches(TokenKind::Ident) {
             let ident = self.token_stream.source()[token.start..token.end].to_string();
             Expression::Identifier(ident)
-        } else if let Some(token) = self.matches(TokenKind::OpenBrace) {
+        } else if self.matches(TokenKind::OpenBrace).is_some() {
             self.block()
         } else {
             todo!()

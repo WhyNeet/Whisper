@@ -1,7 +1,8 @@
-use ast::expr::{Expression, Literal};
+use ast::expr::Expression;
 use ast::module::Module;
-use ast::ops::{BinaryOperator, UnaryOperator};
 use ast::stmt::Statement;
+use common::literal::{Literal, LiteralValue};
+use common::ops::{BinaryOperator, UnaryOperator};
 use common::types::Type;
 use core::unreachable;
 use lexer::stream::TokenStream;
@@ -260,27 +261,36 @@ impl<'a> Parser<'a> {
                 TokenKind::Literal { kind } => match kind {
                     LiteralKind::Bool => {
                         let lexeme = &self.token_stream.source()[token.start..token.end];
-                        Literal::Bool(lexeme == "true")
+                        Literal {
+                            ty: Type::Bool,
+                            value: LiteralValue::Bool(lexeme == "true"),
+                        }
                     }
                     LiteralKind::Str { terminated } => {
                         if !terminated {
                             panic!("Unterminated string.");
                         }
 
-                        Literal::String(
-                            self.token_stream.source()[token.start..token.end].to_string(),
-                        )
+                        Literal {
+                            ty: Type::String,
+                            value: LiteralValue::String(
+                                self.token_stream.source()[token.start..token.end].to_string(),
+                            ),
+                        }
                     }
                     LiteralKind::Int { empty_int, .. } => {
                         if empty_int {
                             panic!("Empty integer.");
                         }
 
-                        Literal::Integer(
-                            self.token_stream.source()[token.start..token.end]
-                                .parse()
-                                .unwrap(),
-                        )
+                        Literal {
+                            ty: Type::IntN,
+                            value: LiteralValue::Integer(
+                                self.token_stream.source()[token.start..token.end]
+                                    .parse()
+                                    .unwrap(),
+                            ),
+                        }
                     }
                     _ => todo!(),
                 },

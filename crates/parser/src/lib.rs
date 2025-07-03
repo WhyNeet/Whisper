@@ -207,10 +207,10 @@ impl<'a> Parser<'a> {
                 while self.matches(TokenKind::Comma).is_some() {
                     args.push(self.expression());
                 }
-            }
 
-            self.matches(TokenKind::CloseParen)
-                .expect("Expected closing parenthesis");
+                self.matches(TokenKind::CloseParen)
+                    .expect("Expected closing parenthesis");
+            }
 
             Expression::FunctionCall {
                 expr: Box::new(expr),
@@ -265,7 +265,7 @@ impl<'a> Parser<'a> {
         } else if self.matches(TokenKind::OpenBrace).is_some() {
             self.block()
         } else {
-            todo!()
+            todo!("{:?}", self.token_stream.peek())
         }
     }
 

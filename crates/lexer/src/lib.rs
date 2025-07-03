@@ -1,6 +1,6 @@
 use crate::{
     cursor::Cursor,
-    token::{Base, LiteralKind, Token, TokenKind},
+    token::{Base, Keyword, LiteralKind, Token, TokenKind},
 };
 
 pub mod cursor;
@@ -152,15 +152,33 @@ impl<'a> Cursor<'a> {
                 s.as_str()
                     .try_into()
                     .map(TokenKind::Keyword)
+                    .map(|keyword| match keyword {
+                        TokenKind::Keyword(Keyword::Mut) => {
+                            if let Some(last_token) = self.last_token() {
+                                if last_token.kind == TokenKind::Keyword(Keyword::Let) {
+                                    keyword
+                                } else {
+                                    TokenKind::Ident
+                                }
+                            } else {
+                                keyword
+                            }
+                        }
+                        keyword => keyword,
+                    })
                     .unwrap_or(TokenKind::Ident)
             }
             _ => TokenKind::Unknown,
         };
 
-        Token {
+        let token = Token {
             start,
             end: self.consumed(),
             kind: token_kind,
-        }
+        };
+
+        self.set_last_token(token);
+
+        token
     }
 }

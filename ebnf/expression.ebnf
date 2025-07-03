@@ -1,7 +1,8 @@
 expression = term ;
 term = factor { ( "+" | "-" ) factor } ;
 factor = unary { ( "* | "/" ) unary } ;
-unary = ( "!" | "-" ) primary | primary ;
+unary = ( "!" | "-" ) fn_call | fn_call ;
+fn_call = primary "(" [ expression ] { "," expression } ")" | primary ;
 primary = IDENTIFIER | NUMBER | grouping | block | "true" | "false" ;
 grouping = "(" expression ")" ;
 block = "{" { statement } "}" ;

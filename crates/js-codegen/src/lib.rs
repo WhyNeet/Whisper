@@ -93,6 +93,34 @@ impl JsCodegen {
 
                 format!("{{{block}}}")
             }
+            Expression::FunctionCall { expr, args } => {
+                let (expr, store_in) = match expr.as_ref() {
+                    Expression::Identifier(ident) => (ident.to_string(), None),
+                    _ => {
+                        let store_in = self.namegen.get();
+                        let expr = self.generate_expr(expr, Some(&store_in));
+                        (expr, Some(store_in))
+                    }
+                };
+                let args = if args.is_empty() {
+                    String::new()
+                } else {
+                    args[..(args.len() - 1)]
+                        .into_iter()
+                        .map(|expr| self.generate_expr(expr, None))
+                        .fold(String::new(), |acc, val| format!("{acc}{val},"))
+                        + &self.generate_expr(&args[args.len() - 1], None)
+                };
+
+                format!(
+                    "{}({args})",
+                    if let Some(store_in) = store_in {
+                        store_in
+                    } else {
+                        expr
+                    }
+                )
+            }
         };
 
         if let Some(store_in) = store_in {

@@ -5,4 +5,4 @@ unary = ( "!" | "-" ) fn_call | fn_call ;
 fn_call = primary "(" [ expression ] { "," expression } ")" | primary ;
 primary = IDENTIFIER | NUMBER | grouping | block | "true" | "false" ;
 grouping = "(" expression ")" ;
-block = "{" { statement } "}" ;
+block = "{" { statement } [ expression ] "}" ;

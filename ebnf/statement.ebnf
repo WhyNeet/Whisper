@@ -1,10 +1,12 @@
-program = { statement } ;
+module = { statement } ;
 
 statement = expr_stmt | declaration_stmt ;
 
 expr_stmt = expression ";" ;
 
-declaration_stmt = fn_declaration ;
+declaration_stmt = fn_declaration | var_declaration ;
 
 fn_declaration = "fn" IDENTIFIER "(" fn_params ")" "=" expression ;
 fn_params = [ IDENTIFIER ":" TYPE ] { "," IDENTIFIER ":" TYPE } ;
+
+var_declaration = "let" IDENTIFIER "=" expression ;

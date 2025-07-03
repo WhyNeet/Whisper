@@ -125,6 +125,17 @@ impl<'a> Cursor<'a> {
                     },
                 }
             }
+            '"' => {
+                while !self.is_eof() && self.peek().map(|c| c != '"').unwrap_or(true) {
+                    self.next();
+                }
+
+                self.next();
+
+                TokenKind::Literal {
+                    kind: LiteralKind::Str { terminated: true },
+                }
+            }
             c if c.is_ascii() => {
                 let mut s = String::from(c);
                 while !self.is_eof()

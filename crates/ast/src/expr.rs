@@ -1,7 +1,5 @@
-use crate::{
-    ops::{BinaryOperator, UnaryOperator},
-    stmt::Statement,
-};
+use crate::stmt::Statement;
+use common::ops::{BinaryOperator, UnaryOperator};
 
 #[derive(Debug, Clone)]
 pub enum Expression {

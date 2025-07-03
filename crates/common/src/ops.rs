@@ -34,7 +34,6 @@ pub enum BinaryOperator {
     Shr,
 }
 
-
 impl fmt::Display for BinaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(

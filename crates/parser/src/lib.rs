@@ -2,9 +2,10 @@ use ast::expr::{Expression, Literal};
 use ast::module::Module;
 use ast::ops::{BinaryOperator, UnaryOperator};
 use ast::stmt::Statement;
+use common::types::Type;
 use core::unreachable;
 use lexer::stream::TokenStream;
-use lexer::token::{LiteralKind, Token, TokenKind};
+use lexer::token::{Keyword, LiteralKind, Token, TokenKind};
 use std::mem;
 
 pub struct Parser<'a> {
@@ -27,7 +28,72 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Statement {
-        self.expr_stmt()
+        if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
+            self.fn_decl()
+        } else {
+            self.expr_stmt()
+        }
+    }
+
+    fn fn_decl(&mut self) -> Statement {
+        let name = self.matches(TokenKind::Ident).expect("Expected identifier");
+        let name = self.token_stream.source()[name.start..name.end].to_string();
+
+        self.matches(TokenKind::OpenParen)
+            .expect("Expected left parenthesis");
+
+        let params = self.fn_params();
+        self.matches(TokenKind::CloseParen)
+            .expect("Expected right parenthesis");
+
+        let return_type = if self.matches(TokenKind::RArrow).is_some() {
+            let ty = self.matches(TokenKind::Ident).expect("Expected type");
+            let ty = self.token_stream.source()[ty.start..ty.end]
+                .try_into()
+                .expect("Invalid type name");
+            ty
+        } else {
+            Type::Unit
+        };
+
+        self.matches(TokenKind::Eq)
+            .expect("Expected `=` before function body");
+
+        let body = self.expression();
+
+        Statement::FunctionDeclaration {
+            name,
+            return_type,
+            parameters: params,
+            body,
+        }
+    }
+
+    fn fn_params(&mut self) -> Vec<(String, Type)> {
+        let mut params = vec![];
+
+        if self.matches_peek(TokenKind::Ident).is_some() {
+            params.push(self.fn_param());
+        }
+
+        while self.matches(TokenKind::Comma).is_some() {
+            params.push(self.fn_param());
+        }
+
+        params
+    }
+
+    fn fn_param(&mut self) -> (String, Type) {
+        let identifier = self.matches(TokenKind::Ident).expect("Expected identifier");
+        let identifier = self.token_stream.source()[identifier.start..identifier.end].to_string();
+
+        self.matches(TokenKind::Colon).expect("Expected colon");
+
+        let ty = self.matches(TokenKind::Ident).expect("Expected type");
+        let ty = self.token_stream.source()[ty.start..ty.end]
+            .try_into()
+            .expect("Invalid type name");
+        (identifier, ty)
     }
 
     fn expr_stmt(&mut self) -> Statement {
@@ -126,7 +192,7 @@ impl<'a> Parser<'a> {
                             self.token_stream.source()[token.start..token.end].to_string(),
                         )
                     }
-                    LiteralKind::Int { base, empty_int } => {
+                    LiteralKind::Int { empty_int, .. } => {
                         if empty_int {
                             panic!("Empty integer.");
                         }
@@ -143,6 +209,9 @@ impl<'a> Parser<'a> {
             };
 
             Expression::Literal(literal)
+        } else if let Some(token) = self.matches(TokenKind::Ident) {
+            let ident = self.token_stream.source()[token.start..token.end].to_string();
+            Expression::Identifier(ident)
         } else {
             todo!()
         }
@@ -161,6 +230,18 @@ impl<'a> Parser<'a> {
         if let Some(token) = self.token_stream.peek() {
             if token.kind == kind {
                 self.token_stream.next()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn matches_peek(&mut self, kind: TokenKind) -> Option<&Token> {
+        if let Some(token) = self.token_stream.peek() {
+            if token.kind == kind {
+                Some(token)
             } else {
                 None
             }

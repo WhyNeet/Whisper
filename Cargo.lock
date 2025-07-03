@@ -10,6 +10,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "checker"
+version = "0.1.0"
+dependencies = [
+ "ast",
+ "common",
+ "tcast",
+]
+
+[[package]]
 name = "common"
 version = "0.1.0"
 
@@ -45,6 +54,7 @@ dependencies = [
 name = "wrc"
 version = "0.1.0"
 dependencies = [
+ "checker",
  "js-codegen",
  "lexer",
  "parser",

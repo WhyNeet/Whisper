@@ -1,10 +1,11 @@
 use common::{
     effects::Effect,
+    literal::Literal,
     ops::{BinaryOperator, UnaryOperator},
     types::Type,
 };
 
-use crate::stmt::Statement;
+use crate::stmt::TypedStatement;
 
 #[derive(Debug, Clone)]
 pub struct TypedExpression {
@@ -17,30 +18,22 @@ pub struct TypedExpression {
 pub enum Expression {
     Unary {
         operator: UnaryOperator,
-        expr: Box<Expression>,
+        expr: Box<TypedExpression>,
     },
     Binary {
         operator: BinaryOperator,
-        left: Box<Expression>,
-        right: Box<Expression>,
+        left: Box<TypedExpression>,
+        right: Box<TypedExpression>,
     },
-    Grouping(Box<Expression>),
+    Grouping(Box<TypedExpression>),
     Identifier(String),
     Literal(Literal),
     Block {
-        stmts: Vec<Statement>,
-        return_expr: Option<Box<Expression>>,
+        stmts: Vec<TypedStatement>,
+        return_expr: Option<Box<TypedExpression>>,
     },
     FunctionCall {
-        expr: Box<Expression>,
-        args: Vec<Expression>,
+        expr: Box<TypedExpression>,
+        args: Vec<TypedExpression>,
     },
-}
-
-#[derive(Debug, Clone)]
-pub enum Literal {
-    String(String),
-    Integer(i64),
-    Float(f64),
-    Bool(bool),
 }

@@ -1,7 +1,8 @@
 use common::{effects::Effect, types::Type};
 
-use crate::expr::Expression;
+use crate::expr::TypedExpression;
 
+#[derive(Debug, Clone)]
 pub struct TypedStatement {
     pub effects: Vec<Effect>,
     pub stmt: Statement,
@@ -9,17 +10,17 @@ pub struct TypedStatement {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Expression(Expression),
+    Expression(TypedExpression),
     FunctionDeclaration {
         name: String,
         return_type: Type,
         parameters: Vec<(String, Type)>,
-        body: Expression,
+        body: TypedExpression,
         effects: Vec<Effect>,
     },
     VariableDeclaration {
         name: String,
         is_mut: bool,
-        expr: Expression,
+        expr: TypedExpression,
     },
 }

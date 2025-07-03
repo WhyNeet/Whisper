@@ -1,4 +1,7 @@
-use crate::ops::{BinaryOperator, UnaryOperator};
+use crate::{
+    ops::{BinaryOperator, UnaryOperator},
+    stmt::Statement,
+};
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -14,6 +17,7 @@ pub enum Expression {
     Grouping(Box<Expression>),
     Identifier(String),
     Literal(Literal),
+    Block(Vec<Statement>),
 }
 
 #[derive(Debug, Clone)]

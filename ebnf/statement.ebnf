@@ -6,7 +6,7 @@ expr_stmt = expression ";" ;
 
 declaration_stmt = fn_declaration | var_declaration ;
 
-fn_declaration = "fn" IDENTIFIER "(" fn_params ")" "=" expression ;
+fn_declaration = "fn" [ "{" [ IDENTIFIER ] { "," IDENTIFIER } "}" ] IDENTIFIER "(" fn_params ")" "=" expression ;
 fn_params = [ IDENTIFIER ":" TYPE ] { "," IDENTIFIER ":" TYPE } ;
 
 var_declaration = "let" [ "mut" ] IDENTIFIER "=" expression ;

@@ -143,6 +143,11 @@ impl JsCodegen {
                     }
                 )
             }
+            Expression::MemberAccess { expr, ident } => {
+                let expr = self.generate_expr(expr, None);
+
+                format!("{expr}.{ident}")
+            }
         };
 
         if !expr.starts_with("{") {

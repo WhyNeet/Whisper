@@ -12,4 +12,5 @@ pub enum LiteralValue {
     Integer(i64),
     Float(f64),
     Bool(bool),
+    Unit,
 }

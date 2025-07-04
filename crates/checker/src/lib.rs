@@ -5,7 +5,7 @@ use std::{cell::RefCell, iter, rc::Rc};
 use ast::{
     expr::Expression as AstExpression, module::Module as AstModule, stmt::Statement as AstStatement,
 };
-use common::{effects::Effect, types::Type};
+use common::{annotations::Annotation, effects::Effect, types::Type};
 use tcast::{
     expr::{Expression, TypedExpression},
     module::Module,
@@ -16,12 +16,14 @@ use crate::scope::Scope;
 
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
+    main_fn: RefCell<Option<String>>,
 }
 
 impl Checker {
     pub fn new() -> Self {
         Self {
             scope: RefCell::new(Rc::new(Scope::js_default())),
+            main_fn: Default::default(),
         }
     }
 }
@@ -34,7 +36,15 @@ impl Checker {
             stmts.push(self.statement(stmt));
         }
 
-        Module { stmts }
+        Module {
+            stmts,
+            entrypoint: self
+                .main_fn
+                .borrow()
+                .as_ref()
+                .expect("Entrypoint is not defined (use `@main` annotation to define entrypoint).")
+                .to_string(),
+        }
     }
 
     pub fn statement(&self, stmt: &AstStatement) -> TypedStatement {
@@ -53,7 +63,16 @@ impl Checker {
                 parameters,
                 body,
                 effects,
-            } => self.fn_declaration(name, parameters, body, return_type, effects),
+                annotations,
+            } => {
+                if annotations.contains(&Annotation::Main) {
+                    if let Some(main_fn) = &*self.main_fn.borrow() {
+                        panic!("Main function is already defined (`{main_fn}`)");
+                    }
+                    self.main_fn.replace(Some(name.to_string()));
+                }
+                self.fn_declaration(name, parameters, body, return_type, effects)
+            }
             AstStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
             }

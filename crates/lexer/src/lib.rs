@@ -73,6 +73,7 @@ impl<'a> Cursor<'a> {
             ']' => TokenKind::CloseBracket,
             '{' => TokenKind::OpenBrace,
             '}' => TokenKind::CloseBrace,
+            '@' => TokenKind::At,
             '+' => TokenKind::Plus,
             '!' => TokenKind::Bang,
             '-' => match self.peek() {

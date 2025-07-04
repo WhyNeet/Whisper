@@ -26,4 +26,8 @@ pub enum Expression {
         expr: Box<Expression>,
         args: Vec<Expression>,
     },
+    MemberAccess {
+        expr: Box<Expression>,
+        ident: String,
+    },
 }

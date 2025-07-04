@@ -2,13 +2,14 @@ use crate::ast::{literal::Literal, ops::UnaryOperator};
 
 use super::ops::BinaryOperator;
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
-    BinaryOperation {
+    Binary {
         operator: BinaryOperator,
         left: Box<Expression>,
         right: Box<Expression>,
     },
-    UnaryOperation {
+    Unary {
         operator: UnaryOperator,
         expr: Box<Expression>,
     },

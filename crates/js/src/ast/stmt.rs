@@ -1,5 +1,6 @@
 use crate::ast::expr::Expression;
 
+#[derive(Debug, Clone)]
 pub enum Statement {
     FunctionDeclaration {
         is_async: bool,
@@ -14,4 +15,5 @@ pub enum Statement {
     },
     Block(Vec<Statement>),
     Expression(Expression),
+    Return(Expression),
 }

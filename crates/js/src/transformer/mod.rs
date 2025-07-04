@@ -1,0 +1,196 @@
+use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator, types::Type};
+use tcast::{
+    expr::{Expression as TExpression, TypedExpression},
+    module::Module,
+    stmt::{Statement as TStatement, TypedStatement},
+};
+
+use crate::ast::{
+    expr::Expression,
+    literal::Literal,
+    ops::{BinaryOperator, UnaryOperator},
+    program::Program,
+    stmt::Statement,
+};
+
+#[derive(Debug, Default)]
+pub struct TypedAstTransformer {}
+
+impl TypedAstTransformer {
+    pub fn run(&self, module: &Module) -> Program {
+        let mut stmts = vec![];
+
+        for stmt in module.stmts.iter() {
+            stmts.append(&mut self.statement(stmt))
+        }
+
+        Program { stmts }
+    }
+
+    fn statement(&self, stmt: &TypedStatement) -> Vec<Statement> {
+        match &stmt.stmt {
+            TStatement::Expression(expr) => {
+                let (mut tail, expr) = self.expression(expr);
+                tail.push(Statement::Expression(expr));
+
+                tail
+            }
+            TStatement::FunctionDeclaration {
+                name,
+                parameters,
+                body,
+                ..
+            } => vec![self.fn_declaration(name, parameters, body)],
+            TStatement::VariableDeclaration { name, is_mut, expr } => {
+                self.var_declaration(name, expr, *is_mut)
+            }
+        }
+    }
+
+    fn var_declaration(
+        &self,
+        name: &String,
+        expr: &TypedExpression,
+        is_mut: bool,
+    ) -> Vec<Statement> {
+        let (mut tail, expr) = self.expression(expr);
+
+        tail.push(Statement::VariableDeclaration {
+            is_const: !is_mut,
+            ident: name.to_string(),
+            expression: expr,
+        });
+
+        tail
+    }
+
+    fn fn_declaration(
+        &self,
+        name: &String,
+        parameters: &Vec<(String, Type)>,
+        body: &TypedExpression,
+    ) -> Statement {
+        let (stmts, ret) = self.expression(body);
+        let mut body = stmts;
+        if ret != Expression::Literal(Literal::Void) {
+            body.push(Statement::Return(ret));
+        }
+
+        Statement::FunctionDeclaration {
+            is_async: false,
+            ident: name.to_string(),
+            params: parameters
+                .into_iter()
+                .map(|(param, _)| param.to_string())
+                .collect(),
+            body,
+        }
+    }
+
+    fn expression(&self, expr: &TypedExpression) -> (Vec<Statement>, Expression) {
+        match &expr.expr {
+            TExpression::Literal(literal) => (
+                vec![],
+                Expression::Literal(match &literal.value {
+                    LiteralValue::String(value) => Literal::String(value.clone()),
+                    LiteralValue::Bool(value) => Literal::Bool(*value),
+                    LiteralValue::Float(value) => Literal::Float(*value),
+                    LiteralValue::Integer(value) => Literal::Integer(*value),
+                    LiteralValue::Unit => Literal::Void,
+                }),
+            ),
+            TExpression::Identifier(ident) => (vec![], Expression::Identifier(ident.to_string())),
+            TExpression::Grouping(expr) => {
+                let (tail, expr) = self.expression(expr);
+                (tail, Expression::Grouping(Box::new(expr)))
+            }
+            TExpression::Unary { operator, expr } => {
+                let (tail, expr) = self.expression(expr);
+
+                (
+                    tail,
+                    Expression::Unary {
+                        operator: match operator {
+                            LangUnaryOperator::Neg => UnaryOperator::Neg,
+                            LangUnaryOperator::Not => UnaryOperator::Not,
+                        },
+                        expr: Box::new(expr),
+                    },
+                )
+            }
+            TExpression::Binary {
+                operator,
+                left,
+                right,
+            } => {
+                let (left_tail, left) = self.expression(left);
+                let (right_tail, right) = self.expression(right);
+
+                (
+                    [left_tail, right_tail].concat(),
+                    Expression::Binary {
+                        operator: match operator {
+                            common::ops::BinaryOperator::Add => BinaryOperator::Add,
+                            common::ops::BinaryOperator::Sub => BinaryOperator::Sub,
+                            common::ops::BinaryOperator::Mul => BinaryOperator::Mul,
+                            common::ops::BinaryOperator::Div => BinaryOperator::Div,
+                            common::ops::BinaryOperator::Or => BinaryOperator::Or,
+                            common::ops::BinaryOperator::And => BinaryOperator::And,
+                            common::ops::BinaryOperator::BitXor => BinaryOperator::BitXor,
+                            common::ops::BinaryOperator::BitOr => BinaryOperator::BitOr,
+                            common::ops::BinaryOperator::BitAnd => BinaryOperator::BitAnd,
+                            common::ops::BinaryOperator::Shl => BinaryOperator::Shl,
+                            common::ops::BinaryOperator::Shr => BinaryOperator::Shr,
+                        },
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    },
+                )
+            }
+            TExpression::MemberAccess { expr, ident } => {
+                let (tail, expr) = self.expression(expr);
+
+                (
+                    tail,
+                    Expression::MemberAccess {
+                        expr: Box::new(expr),
+                        ident: ident.to_string(),
+                    },
+                )
+            }
+            TExpression::FunctionCall { expr, args } => {
+                let (tail, expr) = self.expression(expr);
+
+                let (args_tails, args) = args
+                    .into_iter()
+                    .map(|arg| self.expression(arg))
+                    .collect::<(Vec<Vec<Statement>>, Vec<Expression>)>();
+
+                (
+                    [tail, args_tails.concat()].concat(),
+                    Expression::FunctionCall {
+                        expr: Box::new(expr),
+                        args,
+                    },
+                )
+            }
+            TExpression::Block { return_expr, stmts } => {
+                let mut tail = stmts
+                    .into_iter()
+                    .map(|stmt| self.statement(stmt))
+                    .collect::<Vec<_>>();
+                let return_expr = return_expr
+                    .as_ref()
+                    .map(|expr| self.expression(expr.as_ref()));
+
+                let Some((ret_tail, expr)) = return_expr else {
+                    return (tail.concat(), Expression::Literal(Literal::Void));
+                };
+
+                tail.push(ret_tail);
+
+                (tail.concat(), expr)
+            }
+        }
+    }
+}

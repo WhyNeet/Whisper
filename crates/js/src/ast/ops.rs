@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOperator {
     Neg,
     Not,
@@ -19,7 +19,7 @@ impl fmt::Display for UnaryOperator {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOperator {
     Add,
     Sub,

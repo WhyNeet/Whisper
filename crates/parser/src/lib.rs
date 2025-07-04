@@ -1,6 +1,7 @@
 use ast::expr::Expression;
 use ast::module::Module;
 use ast::stmt::Statement;
+use common::annotations::Annotation;
 use common::literal::{Literal, LiteralValue};
 use common::ops::{BinaryOperator, UnaryOperator};
 use common::types::Type;
@@ -41,7 +42,23 @@ impl<'a> Parser<'a> {
 
     fn statement(&mut self) -> Statement {
         if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
-            self.fn_decl()
+            self.fn_decl(vec![])
+        } else if self.matches_peek(TokenKind::At).is_some() {
+            let mut annotations = vec![];
+
+            while self.matches(TokenKind::At).is_some() {
+                let annotation = self.matches(TokenKind::Ident).expect("Expected identifier");
+                annotations.push(
+                    self.token_stream.source()[annotation.start..annotation.end]
+                        .try_into()
+                        .unwrap(),
+                );
+            }
+
+            self.matches(TokenKind::Keyword(Keyword::Fn))
+                .expect("Expected `fn` keyword");
+
+            self.fn_decl(annotations)
         } else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
             self.var_decl()
         } else {
@@ -68,7 +85,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn fn_decl(&mut self) -> Statement {
+    fn fn_decl(&mut self, annotations: Vec<Annotation>) -> Statement {
         let effects = if self.matches(TokenKind::OpenBrace).is_some() {
             let mut effects = vec![];
 
@@ -128,6 +145,7 @@ impl<'a> Parser<'a> {
             parameters: params,
             body,
             effects,
+            annotations,
         }
     }
 

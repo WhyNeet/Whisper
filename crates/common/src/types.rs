@@ -27,6 +27,9 @@ pub enum Type {
         params: Vec<Type>,
         effects: Vec<Effect>,
     },
+    Struct {
+        fields: Vec<(String, Type)>,
+    },
 }
 
 impl Type {
@@ -74,6 +77,13 @@ impl Type {
                 params,
                 effects,
             } => Some((return_type, params, effects)),
+            _ => None,
+        }
+    }
+
+    pub fn as_struct(self) -> Option<Vec<(String, Type)>> {
+        match self {
+            Self::Struct { fields } => Some(fields),
             _ => None,
         }
     }

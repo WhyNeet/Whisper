@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
     }
 
     fn fn_call(&mut self) -> Expression {
-        let expr = self.primary();
+        let expr = self.member_access();
 
         if self.matches(TokenKind::OpenParen).is_some() {
             let mut args = vec![];
@@ -249,6 +249,22 @@ impl<'a> Parser<'a> {
         } else {
             expr
         }
+    }
+
+    fn member_access(&mut self) -> Expression {
+        let mut expr = self.primary();
+
+        while self.matches(TokenKind::Dot).is_some() {
+            let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+            let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+
+            expr = Expression::MemberAccess {
+                expr: Box::new(expr),
+                ident,
+            };
+        }
+
+        expr
     }
 
     fn primary(&mut self) -> Expression {

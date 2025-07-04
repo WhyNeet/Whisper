@@ -1,18 +1,43 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use common::types::Type;
+use common::{effects::Effect, types::Type};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Scope {
     enclosing: Option<Rc<Scope>>,
     values: RefCell<HashMap<String, Type>>,
 }
 
 impl Scope {
+    pub fn js_default() -> Self {
+        let mut values = HashMap::new();
+
+        values.insert(
+            "console".to_string(),
+            Type::Struct {
+                fields: vec![(
+                    "log".to_string(),
+                    Type::Fn {
+                        return_type: Box::new(Type::Unit),
+                        params: vec![Type::String],
+                        effects: vec![Effect::Io],
+                    },
+                )],
+            },
+        );
+
+        Self {
+            enclosing: Default::default(),
+            values: RefCell::new(values),
+        }
+    }
+}
+
+impl Scope {
     pub fn new(enclosing: Rc<Scope>) -> Self {
         Self {
             enclosing: Some(enclosing),
-            ..Default::default()
+            ..Scope::js_default()
         }
     }
 

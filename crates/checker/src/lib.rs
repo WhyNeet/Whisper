@@ -21,7 +21,7 @@ pub struct Checker {
 impl Checker {
     pub fn new() -> Self {
         Self {
-            scope: Default::default(),
+            scope: RefCell::new(Rc::new(Scope::js_default())),
         }
     }
 }

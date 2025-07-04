@@ -21,7 +21,18 @@ impl<'a> Parser<'a> {
     pub fn run(&mut self) -> Module {
         let mut stmts = vec![];
 
-        while self.token_stream.peek().is_some() {
+        while let Some(token) = self.token_stream.peek() {
+            match token.kind {
+                TokenKind::LineComment => continue,
+                TokenKind::BlockComment { terminated } => {
+                    if !terminated {
+                        panic!("Unterminated block comment.")
+                    }
+                    continue;
+                }
+                _ => (),
+            }
+
             stmts.push(self.statement());
         }
 
@@ -334,6 +345,21 @@ impl<'a> Parser<'a> {
     fn block(&mut self) -> Expression {
         let mut stmts = vec![];
         while !self.matches(TokenKind::CloseBrace).is_some() {
+            match self.token_stream.peek().unwrap().kind {
+                TokenKind::LineComment => {
+                    self.token_stream.next();
+                    continue;
+                }
+                TokenKind::BlockComment { terminated } => {
+                    if !terminated {
+                        panic!("Unterminated block comment.")
+                    }
+                    self.token_stream.next();
+                    continue;
+                }
+                _ => (),
+            }
+
             let stmt = self.statement();
             stmts.push(stmt);
         }

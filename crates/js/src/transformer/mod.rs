@@ -24,6 +24,11 @@ impl TypedAstTransformer {
             stmts.append(&mut self.statement(stmt))
         }
 
+        stmts.push(Statement::Expression(Expression::FunctionCall {
+            expr: Box::new(Expression::Identifier(module.entrypoint.to_string())),
+            args: vec![],
+        }));
+
         Program { stmts }
     }
 

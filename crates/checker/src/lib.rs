@@ -263,7 +263,7 @@ impl Checker {
             }
             AstExpression::Identifier(ident) => {
                 let Some(ty) = self.scope.borrow().get(ident) else {
-                    panic!("Variable `{ident}` is not present in current scope.");
+                    panic!("`{ident}` is not present in current scope.");
                 };
 
                 TypedExpression {
@@ -273,17 +273,10 @@ impl Checker {
                 }
             }
             AstExpression::FunctionCall { expr, args } => {
-                let fn_name = match expr.as_ref() {
-                    AstExpression::Identifier(ident) => ident,
-                    other => panic!("`{other:?}` is not callable."),
-                };
+                let expr = self.expression(expr);
 
-                let Some(fn_type) = self.scope.borrow().get(fn_name) else {
-                    panic!("Function `{fn_name}` is not present in current scope.");
-                };
-
-                let Some((fn_return_type, fn_params, fn_effects)) = fn_type.clone().as_fn() else {
-                    panic!("`{fn_name}` is not a function.")
+                let Some((fn_return_type, fn_params, fn_effects)) = expr.ty.clone().as_fn() else {
+                    panic!("`{expr:?}` is not callable.")
                 };
 
                 let args = args
@@ -308,11 +301,7 @@ impl Checker {
                 }
 
                 let expr = Expression::FunctionCall {
-                    expr: Box::new(TypedExpression {
-                        effects: vec![],
-                        ty: fn_type,
-                        expr: Expression::Identifier(fn_name.to_string()),
-                    }),
+                    expr: Box::new(expr),
                     args,
                 };
 
@@ -320,6 +309,27 @@ impl Checker {
                     effects: fn_effects,
                     expr,
                     ty: fn_return_type.as_ref().clone(),
+                }
+            }
+            AstExpression::MemberAccess { expr, ident } => {
+                let expr = self.expression(expr);
+                let Some(fields) = expr.ty.clone().as_struct() else {
+                    panic!("Expression does not contain member `{ident}`");
+                };
+
+                let Some((_, field_ty)) = fields.into_iter().find(|(name, _)| name == ident) else {
+                    panic!("Expression does not contain member `{ident}`");
+                };
+
+                let expr = Expression::MemberAccess {
+                    expr: Box::new(expr),
+                    ident: ident.to_string(),
+                };
+
+                TypedExpression {
+                    ty: field_ty,
+                    effects: vec![],
+                    expr,
                 }
             }
         }

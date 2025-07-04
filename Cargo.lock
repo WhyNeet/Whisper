@@ -25,13 +25,9 @@ version = "0.1.0"
 [[package]]
 name = "js"
 version = "0.1.0"
-
-[[package]]
-name = "js-codegen"
-version = "0.1.0"
 dependencies = [
- "ast",
  "common",
+ "tcast",
 ]
 
 [[package]]
@@ -59,7 +55,7 @@ name = "wrc"
 version = "0.1.0"
 dependencies = [
  "checker",
- "js-codegen",
+ "js",
  "lexer",
  "parser",
 ]

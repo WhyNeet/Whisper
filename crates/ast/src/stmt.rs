@@ -1,5 +1,5 @@
 use crate::expr::Expression;
-use common::{effects::Effect, types::Type};
+use common::{annotations::Annotation, effects::Effect, types::Type};
 
 #[derive(Debug, Clone)]
 pub enum Statement {
@@ -13,6 +13,7 @@ pub enum Statement {
         parameters: Vec<(String, Type)>,
         body: Expression,
         effects: Vec<Effect>,
+        annotations: Vec<Annotation>,
     },
     VariableDeclaration {
         name: String,

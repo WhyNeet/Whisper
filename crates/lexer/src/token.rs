@@ -143,6 +143,7 @@ pub enum Keyword {
     Mut,
     Struct,
     Pub,
+    Default,
 }
 
 impl TryFrom<&str> for Keyword {
@@ -155,6 +156,7 @@ impl TryFrom<&str> for Keyword {
             "mut" => Ok(Self::Mut),
             "struct" => Ok(Self::Struct),
             "pub" => Ok(Self::Pub),
+            "default" => Ok(Self::Default),
             _ => Err("not a keyword."),
         }
     }

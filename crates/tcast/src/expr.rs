@@ -40,4 +40,9 @@ pub enum Expression {
         expr: Box<TypedExpression>,
         ident: String,
     },
+    StructInit {
+        use_default: bool,
+        name: String,
+        fields: Vec<(String, TypedExpression)>,
+    },
 }

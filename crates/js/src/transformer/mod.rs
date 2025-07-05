@@ -1,3 +1,5 @@
+use std::iter;
+
 use common::{
     literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator, structs::StructField,
     types::Type,
@@ -68,6 +70,9 @@ impl TypedAstTransformer {
                 },
                 expr: Expression::Identifier(field.name.clone()),
             })
+            .chain(iter::once(Statement::Return(Expression::Identifier(
+                "this".to_string(),
+            ))))
             .collect();
 
         Statement::FunctionDeclaration {
@@ -221,6 +226,23 @@ impl TypedAstTransformer {
                 tail.push(ret_tail);
 
                 (tail.concat(), expr)
+            }
+            TExpression::StructInit { name, fields, .. } => {
+                let (tails, exprs) = fields
+                    .into_iter()
+                    .map(|(_, expr)| {
+                        let (tail, expr) = self.expression(expr);
+                        (tail, expr)
+                    })
+                    .collect::<(Vec<_>, Vec<_>)>();
+                let tail = tails.concat();
+
+                let expr = Expression::FunctionCall {
+                    expr: Box::new(Expression::Identifier(name.clone())),
+                    args: exprs,
+                };
+
+                (tail, expr)
             }
         }
     }

@@ -1,11 +1,10 @@
-use ast::expr::Expression;
+use ast::expr::{Expression, Literal};
 use ast::module::Module;
-use ast::stmt::Statement;
+use ast::stmt::{Statement, StructField};
+use ast::types::Type;
 use common::annotations::Annotation;
-use common::literal::{Literal, LiteralValue};
+use common::literal::LiteralValue;
 use common::ops::{BinaryOperator, UnaryOperator};
-use common::structs::StructField;
-use common::types::Type;
 use core::unreachable;
 use lexer::stream::TokenStream;
 use lexer::token::{Keyword, LiteralKind, Token, TokenKind};
@@ -425,7 +424,7 @@ impl<'a> Parser<'a> {
 
         Expression::StructInit {
             use_default,
-            name: self.token_stream.source()[name.start..name.end].to_string(),
+            ty: self.token_stream.source()[name.start..name.end].into(),
             fields,
         }
     }

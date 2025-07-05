@@ -1,25 +1,30 @@
-use std::iter;
+pub mod resolver;
 
-use common::{
-    literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator, structs::StructField,
-    types::Type,
-};
+use std::{cell::RefCell, iter, rc::Rc};
+
+use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator};
 use tcast::{
     expr::{Expression as TExpression, TypedExpression},
     module::Module,
-    stmt::{Statement as TStatement, TypedStatement},
+    stmt::{Statement as TStatement, StructField, TypedStatement},
+    types::Type,
 };
 
-use crate::ast::{
-    expr::Expression,
-    literal::Literal,
-    ops::{BinaryOperator, UnaryOperator},
-    program::Program,
-    stmt::Statement,
+use crate::{
+    ast::{
+        expr::Expression,
+        literal::Literal,
+        ops::{BinaryOperator, UnaryOperator},
+        program::Program,
+        stmt::Statement,
+    },
+    transformer::resolver::TypeResolver,
 };
 
 #[derive(Debug, Default)]
-pub struct TypedAstTransformer {}
+pub struct TypedAstTransformer {
+    type_resolver: RefCell<Rc<TypeResolver>>,
+}
 
 impl TypedAstTransformer {
     pub fn run(&self, module: &Module) -> Program {
@@ -55,6 +60,15 @@ impl TypedAstTransformer {
                 self.var_declaration(name, expr, *is_mut)
             }
             TStatement::StructDeclaration { name, fields } => {
+                self.type_resolver.borrow().insert(
+                    name.clone(),
+                    Type::Struct {
+                        fields: fields
+                            .into_iter()
+                            .map(|field| (field.name.clone(), field.ty.clone()))
+                            .collect(),
+                    },
+                );
                 vec![self.struct_declaration(name, fields)]
             }
         }
@@ -227,7 +241,7 @@ impl TypedAstTransformer {
 
                 (tail.concat(), expr)
             }
-            TExpression::StructInit { name, fields, .. } => {
+            TExpression::StructInit { ty, fields, .. } => {
                 let (tails, exprs) = fields
                     .into_iter()
                     .map(|(_, expr)| {
@@ -237,8 +251,10 @@ impl TypedAstTransformer {
                     .collect::<(Vec<_>, Vec<_>)>();
                 let tail = tails.concat();
 
+                let name = self.type_resolver.borrow().resolve(ty).unwrap();
+
                 let expr = Expression::FunctionCall {
-                    expr: Box::new(Expression::Identifier(name.clone())),
+                    expr: Box::new(Expression::Identifier(name)),
                     args: exprs,
                 };
 

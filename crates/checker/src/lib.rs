@@ -1,6 +1,6 @@
 pub mod scope;
 
-use std::{cell::RefCell, iter, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, iter, rc::Rc};
 
 use ast::{
     expr::Expression as AstExpression, module::Module as AstModule, stmt::Statement as AstStatement,
@@ -358,9 +358,10 @@ impl Checker {
             }
             AstExpression::MemberAccess { expr, ident } => {
                 let expr = self.expression(expr);
-                let Some(fields) = expr.ty.clone().as_struct() else {
+                let Some(fields) = expr.ty.clone().as_struct_instance() else {
                     panic!("Expression does not contain member `{ident}`");
                 };
+                let fields = fields.as_struct().unwrap();
 
                 let Some((_, field_ty)) = fields.into_iter().find(|(name, _)| name == ident) else {
                     panic!("Expression does not contain member `{ident}`");
@@ -374,6 +375,88 @@ impl Checker {
                 TypedExpression {
                     ty: field_ty,
                     effects: vec![],
+                    expr,
+                }
+            }
+            AstExpression::StructInit {
+                use_default,
+                name,
+                fields,
+            } => {
+                let Some(ty) = self.scope.borrow().get(name) else {
+                    panic!("Struct `{name}` is not present in current scope.");
+                };
+                let Some(struct_fields) = ty.clone().as_struct() else {
+                    panic!("`{name}` is not a struct.");
+                };
+
+                if *use_default {
+                    todo!("use_default");
+                }
+
+                let fields = fields
+                    .into_iter()
+                    .map(|(name, expr)| (name.clone(), self.expression(expr)))
+                    .collect::<Vec<_>>();
+
+                let mut covered_fields = HashSet::new();
+
+                for (field_name, field_expr) in fields.iter() {
+                    if covered_fields.contains(field_name) {
+                        panic!("Field `{field_name}` is already defined.");
+                    }
+
+                    let field_ty = &field_expr.ty;
+                    let Some((_, expected_ty)) =
+                        struct_fields.iter().find(|(name, _)| name == field_name)
+                    else {
+                        panic!("Field `{field_name} does not exist on struct `{name}`.");
+                    };
+
+                    if field_ty != expected_ty {
+                        panic!(
+                            "Field expected expression of type `{expected_ty:?}`, but found `{field_ty:?}`."
+                        );
+                    }
+
+                    covered_fields.insert(field_name);
+                }
+
+                for (name, _) in struct_fields.iter() {
+                    if !covered_fields.contains(name) {
+                        panic!("Field `{name}` is not defined.");
+                    }
+                }
+
+                let effects = fields
+                    .iter()
+                    .map(|field| field.1.effects.as_slice())
+                    .flatten()
+                    .cloned()
+                    .collect();
+
+                let mut sorted_fields = vec![];
+
+                // TODO: optimize this shit
+                for (field_name, _) in struct_fields {
+                    sorted_fields.push(
+                        fields
+                            .iter()
+                            .find(|(name, _)| *name == field_name)
+                            .unwrap()
+                            .clone(),
+                    );
+                }
+
+                let expr = Expression::StructInit {
+                    use_default: *use_default,
+                    name: name.clone(),
+                    fields: sorted_fields,
+                };
+
+                TypedExpression {
+                    ty: Type::StructInstance { of: Box::new(ty) },
+                    effects,
                     expr,
                 }
             }

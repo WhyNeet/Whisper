@@ -4,6 +4,7 @@ use ast::stmt::Statement;
 use common::annotations::Annotation;
 use common::literal::{Literal, LiteralValue};
 use common::ops::{BinaryOperator, UnaryOperator};
+use common::structs::StructField;
 use common::types::Type;
 use core::unreachable;
 use lexer::stream::TokenStream;
@@ -61,8 +62,45 @@ impl<'a> Parser<'a> {
             self.fn_decl(annotations)
         } else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
             self.var_decl()
+        } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
+            self.struct_decl()
         } else {
             self.expr_stmt()
+        }
+    }
+
+    fn struct_decl(&mut self) -> Statement {
+        let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+
+        self.matches(TokenKind::OpenBrace)
+            .expect("Expected opening brace");
+
+        let mut fields = vec![];
+
+        while !self.matches(TokenKind::CloseBrace).is_some() {
+            let is_pub = self.matches(TokenKind::Keyword(Keyword::Pub)).is_some();
+
+            let name = self.matches(TokenKind::Ident).expect("Expected identifier");
+            let name = self.token_stream.source()[name.start..name.end].to_string();
+
+            self.matches(TokenKind::Colon).expect("Expected colon");
+
+            let ty = self
+                .matches(TokenKind::Ident)
+                .expect("Expected type identifier");
+            let ty = self.token_stream.source()[ty.start..ty.end]
+                .try_into()
+                .unwrap();
+
+            self.matches(TokenKind::Semi).expect("Expected semicolon");
+
+            fields.push(StructField { is_pub, name, ty });
+        }
+
+        Statement::StructDeclaration {
+            name: ident,
+            fields,
         }
     }
 

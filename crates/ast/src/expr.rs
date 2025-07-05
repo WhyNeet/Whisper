@@ -30,4 +30,9 @@ pub enum Expression {
         expr: Box<Expression>,
         ident: String,
     },
+    StructInit {
+        use_default: bool,
+        name: String,
+        fields: Vec<(String, Expression)>,
+    },
 }

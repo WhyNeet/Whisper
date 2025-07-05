@@ -16,4 +16,8 @@ pub enum Statement {
     Block(Vec<Statement>),
     Expression(Expression),
     Return(Expression),
+    Assignment {
+        target: Expression,
+        expr: Expression,
+    },
 }

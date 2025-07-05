@@ -56,6 +56,12 @@ impl Codegen {
                     if is_async { "async " } else { "" }
                 )
             }
+            Statement::Assignment { target, expr } => {
+                let target = self.expression(&target);
+                let expr = self.expression(&expr);
+
+                format!("{target}={expr};")
+            }
             Statement::Block(stmts) => {
                 let stmts = stmts
                     .into_iter()

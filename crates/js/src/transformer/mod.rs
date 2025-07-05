@@ -1,4 +1,7 @@
-use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator, types::Type};
+use common::{
+    literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator, structs::StructField,
+    types::Type,
+};
 use tcast::{
     expr::{Expression as TExpression, TypedExpression},
     module::Module,
@@ -49,6 +52,29 @@ impl TypedAstTransformer {
             TStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
             }
+            TStatement::StructDeclaration { name, fields } => {
+                vec![self.struct_declaration(name, fields)]
+            }
+        }
+    }
+
+    fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> Statement {
+        let body = fields
+            .into_iter()
+            .map(|field| Statement::Assignment {
+                target: Expression::MemberAccess {
+                    expr: Box::new(Expression::Identifier("this".to_string())),
+                    ident: field.name.clone(),
+                },
+                expr: Expression::Identifier(field.name.clone()),
+            })
+            .collect();
+
+        Statement::FunctionDeclaration {
+            is_async: false,
+            ident: name.to_string(),
+            params: fields.into_iter().map(|field| field.name.clone()).collect(),
+            body,
         }
     }
 

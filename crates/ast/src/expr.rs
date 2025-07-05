@@ -1,6 +1,6 @@
-use crate::stmt::Statement;
+use crate::{stmt::Statement, types::Type};
 use common::{
-    literal::Literal,
+    literal::LiteralValue,
     ops::{BinaryOperator, UnaryOperator},
 };
 
@@ -32,7 +32,13 @@ pub enum Expression {
     },
     StructInit {
         use_default: bool,
-        name: String,
+        ty: Type,
         fields: Vec<(String, Expression)>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct Literal {
+    pub value: LiteralValue,
+    pub ty: Type,
 }

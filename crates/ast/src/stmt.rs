@@ -1,5 +1,5 @@
-use crate::expr::Expression;
-use common::{annotations::Annotation, effects::Effect, structs::StructField, types::Type};
+use crate::{expr::Expression, types::Type};
+use common::{annotations::Annotation, effects::Effect};
 
 #[derive(Debug, Clone)]
 pub enum Statement {
@@ -24,4 +24,11 @@ pub enum Statement {
         name: String,
         fields: Vec<StructField>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: String,
+    pub ty: Type,
+    pub is_pub: bool,
 }

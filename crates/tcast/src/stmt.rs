@@ -1,4 +1,4 @@
-use common::{effects::Effect, types::Type};
+use common::{effects::Effect, structs::StructField, types::Type};
 
 use crate::expr::TypedExpression;
 
@@ -22,5 +22,9 @@ pub enum Statement {
         name: String,
         is_mut: bool,
         expr: TypedExpression,
+    },
+    StructDeclaration {
+        name: String,
+        fields: Vec<StructField>,
     },
 }

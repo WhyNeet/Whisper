@@ -381,13 +381,52 @@ impl<'a> Parser<'a> {
             };
 
             Expression::Literal(literal)
-        } else if let Some(token) = self.matches(TokenKind::Ident) {
-            let ident = self.token_stream.source()[token.start..token.end].to_string();
-            Expression::Identifier(ident)
         } else if self.matches(TokenKind::OpenBrace).is_some() {
             self.block()
+        } else if self.matches(TokenKind::Keyword(Keyword::Default)).is_some() {
+            let name = self
+                .matches(TokenKind::Ident)
+                .expect("Expected struct identifier");
+            self.struct_init(name, true)
+        } else if let Some(token) = self.matches(TokenKind::Ident) {
+            if self.matches_peek(TokenKind::OpenBrace).is_some() {
+                self.struct_init(token, false)
+            } else {
+                let ident = self.token_stream.source()[token.start..token.end].to_string();
+                Expression::Identifier(ident)
+            }
         } else {
             todo!("{:?}", self.token_stream.peek())
+        }
+    }
+
+    fn struct_init(&mut self, name: Token, use_default: bool) -> Expression {
+        self.matches(TokenKind::OpenBrace)
+            .expect("Expected opening brace");
+
+        let mut fields = vec![];
+
+        if !self.matches(TokenKind::CloseBrace).is_some() {
+            while !self.matches(TokenKind::CloseBrace).is_some() {
+                let name = self.matches(TokenKind::Ident).expect("Expected field name");
+                let name = self.token_stream.source()[name.start..name.end].to_string();
+                self.matches(TokenKind::Colon).expect("Expected colon");
+                let expr = self.expression();
+
+                if !self.matches(TokenKind::Comma).is_some()
+                    && !self.matches_peek(TokenKind::CloseBrace).is_some()
+                {
+                    panic!("Expected comma.")
+                }
+
+                fields.push((name, expr));
+            }
+        }
+
+        Expression::StructInit {
+            use_default,
+            name: self.token_stream.source()[name.start..name.end].to_string(),
+            fields,
         }
     }
 

@@ -1,6 +1,6 @@
-use common::{effects::Effect, structs::StructField, types::Type};
+use common::effects::Effect;
 
-use crate::expr::TypedExpression;
+use crate::{expr::TypedExpression, types::Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedStatement {
@@ -27,4 +27,11 @@ pub enum Statement {
         name: String,
         fields: Vec<StructField>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: String,
+    pub ty: Type,
+    pub is_pub: bool,
 }

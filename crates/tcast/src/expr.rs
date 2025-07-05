@@ -1,11 +1,10 @@
 use common::{
     effects::Effect,
-    literal::Literal,
+    literal::LiteralValue,
     ops::{BinaryOperator, UnaryOperator},
-    types::Type,
 };
 
-use crate::stmt::TypedStatement;
+use crate::{stmt::TypedStatement, types::Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedExpression {
@@ -42,7 +41,13 @@ pub enum Expression {
     },
     StructInit {
         use_default: bool,
-        name: String,
+        ty: Type,
         fields: Vec<(String, TypedExpression)>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct Literal {
+    pub value: LiteralValue,
+    pub ty: Type,
 }

@@ -1,6 +1,8 @@
+use std::mem;
+
 use crate::effects::Effect;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Type {
     Int8,
     Int16,
@@ -12,8 +14,6 @@ pub enum Type {
     UInt16,
     UInt32,
     UInt64,
-    /// Inferred UInt
-    UIntN,
     Float32,
     Float64,
     /// Inferred Float
@@ -30,6 +30,27 @@ pub enum Type {
     Struct {
         fields: Vec<(String, Type)>,
     },
+    StructInstance {
+        of: Box<Type>,
+    },
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::IntN => other.is_int() || other.is_uint(),
+            Self::FloatN => other.is_float(),
+            _ => mem::discriminant(self) == mem::discriminant(other),
+        }
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        match self {
+            Self::IntN => !other.is_int() && !other.is_uint(),
+            Self::FloatN => !other.is_float(),
+            _ => mem::discriminant(self) != mem::discriminant(other),
+        }
+    }
 }
 
 impl Type {
@@ -45,8 +66,35 @@ impl Type {
             | Self::UInt64
             | Self::Float32
             | Self::Float64
-            | Self::IntN
-            | Self::UIntN => true,
+            | Self::IntN => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        match self {
+            Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64 | Self::IntN => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_uint(&self) -> bool {
+        match self {
+            Self::UInt8 | Self::UInt16 | Self::UInt32 | Self::UInt64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            Self::FloatN | Self::Float32 | Self::Float64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_inferred(&self) -> bool {
+        match self {
+            Self::FloatN | Self::IntN => true,
             _ => false,
         }
     }
@@ -84,6 +132,13 @@ impl Type {
     pub fn as_struct(self) -> Option<Vec<(String, Type)>> {
         match self {
             Self::Struct { fields } => Some(fields),
+            _ => None,
+        }
+    }
+
+    pub fn as_struct_instance(self) -> Option<Box<Type>> {
+        match self {
+            Self::StructInstance { of } => Some(of),
             _ => None,
         }
     }

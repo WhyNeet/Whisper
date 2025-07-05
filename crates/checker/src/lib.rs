@@ -5,7 +5,7 @@ use std::{cell::RefCell, iter, rc::Rc};
 use ast::{
     expr::Expression as AstExpression, module::Module as AstModule, stmt::Statement as AstStatement,
 };
-use common::{annotations::Annotation, effects::Effect, types::Type};
+use common::{annotations::Annotation, effects::Effect, structs::StructField, types::Type};
 use tcast::{
     expr::{Expression, TypedExpression},
     module::Module,
@@ -76,6 +76,32 @@ impl Checker {
             AstStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
             }
+            AstStatement::StructDeclaration { name, fields } => {
+                self.struct_declaration(name, fields)
+            }
+        }
+    }
+
+    pub fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> TypedStatement {
+        let ty = Type::Struct {
+            fields: fields
+                .into_iter()
+                .map(|field| (field.name.clone(), field.ty.clone()))
+                .collect(),
+        };
+
+        let stmt = Statement::StructDeclaration {
+            name: name.to_string(),
+            fields: fields.clone(),
+        };
+
+        if self.scope.borrow().insert(name.clone(), ty) {
+            panic!("Struct `{name}` is already defined in current scope.");
+        }
+
+        TypedStatement {
+            effects: vec![],
+            stmt,
         }
     }
 

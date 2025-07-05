@@ -1,6 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use common::{effects::Effect, types::Type};
+use common::effects::Effect;
+use tcast::types::Type;
 
 #[derive(Debug, Clone)]
 pub struct Scope {

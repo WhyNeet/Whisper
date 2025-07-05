@@ -1,21 +1,28 @@
+pub mod resolver;
 pub mod scope;
 
 use std::{cell::RefCell, collections::HashSet, iter, rc::Rc};
 
 use ast::{
-    expr::Expression as AstExpression, module::Module as AstModule, stmt::Statement as AstStatement,
+    expr::Expression as AstExpression,
+    module::Module as AstModule,
+    stmt::{Statement as AstStatement, StructField},
+    types::Type as AstType,
 };
-use common::{annotations::Annotation, effects::Effect, structs::StructField, types::Type};
+use common::{annotations::Annotation, effects::Effect};
 use tcast::{
-    expr::{Expression, TypedExpression},
+    expr::{Expression, Literal, TypedExpression},
     module::Module,
-    stmt::{Statement, TypedStatement},
+    ops::{TypedBinaryOperator, TypedUnaryOperator},
+    stmt::{Statement, StructField as TStructField, TypedStatement},
+    types::Type as TcAstType,
 };
 
-use crate::scope::Scope;
+use crate::{resolver::TypeResolver, scope::Scope};
 
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
+    type_resolver: RefCell<Rc<TypeResolver>>,
     main_fn: RefCell<Option<String>>,
 }
 
@@ -23,6 +30,7 @@ impl Checker {
     pub fn new() -> Self {
         Self {
             scope: RefCell::new(Rc::new(Scope::js_default())),
+            type_resolver: Default::default(),
             main_fn: Default::default(),
         }
     }
@@ -83,9 +91,21 @@ impl Checker {
     }
 
     pub fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> TypedStatement {
-        let ty = Type::Struct {
+        let fields = fields
+            .into_iter()
+            .map(|field| TStructField {
+                name: field.name.clone(),
+                ty: self
+                    .type_resolver
+                    .borrow()
+                    .resolve(&field.ty)
+                    .expect("Cannot resolve type"),
+                is_pub: field.is_pub,
+            })
+            .collect::<Vec<_>>();
+        let ty = TcAstType::Struct {
             fields: fields
-                .into_iter()
+                .iter()
                 .map(|field| (field.name.clone(), field.ty.clone()))
                 .collect(),
         };
@@ -95,7 +115,7 @@ impl Checker {
             fields: fields.clone(),
         };
 
-        if self.scope.borrow().insert(name.clone(), ty) {
+        if self.type_resolver.borrow().insert(name.clone(), ty) {
             panic!("Struct `{name}` is already defined in current scope.");
         }
 
@@ -134,22 +154,29 @@ impl Checker {
     pub fn fn_declaration(
         &self,
         name: &String,
-        parameters: &Vec<(String, Type)>,
+        parameters: &Vec<(String, AstType)>,
         body: &AstExpression,
-        return_type: &Type,
+        return_type: &AstType,
         effects: &Vec<Effect>,
     ) -> TypedStatement {
         let prev_scope = self
             .scope
             .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
         let scope = self.scope.borrow();
+        let resolver = self.type_resolver.borrow();
         for (name, ty) in parameters {
-            scope.insert(name.clone(), ty.clone());
+            scope.insert(
+                name.clone(),
+                resolver.resolve(ty).expect("Failed to resolve type"),
+            );
         }
         drop(scope);
+        let return_type = resolver
+            .resolve(return_type)
+            .expect("Failed to resolve type");
         let body = self.expression(body);
 
-        if body.ty != *return_type {
+        if body.ty != return_type {
             panic!(
                 "Expected `{name}` to return type `{return_type:?}`, but got: {:?}",
                 body.ty
@@ -164,9 +191,20 @@ impl Checker {
 
         self.scope.replace(prev_scope);
 
-        let fn_type = Type::Fn {
+        let params = parameters
+            .into_iter()
+            .map(|(_, ty)| resolver.resolve(ty).expect("Failed to resolve type"))
+            .collect::<Vec<_>>();
+
+        let parameters = parameters
+            .into_iter()
+            .zip(params.iter())
+            .map(|((name, _), ty)| (name.clone(), ty.clone()))
+            .collect();
+
+        let fn_type = TcAstType::Fn {
             return_type: Box::new(return_type.clone()),
-            params: parameters.into_iter().map(|(_, ty)| ty.clone()).collect(),
+            params,
             effects: effects.clone(),
         };
 
@@ -177,7 +215,7 @@ impl Checker {
         let stmt = Statement::FunctionDeclaration {
             name: name.clone(),
             return_type: return_type.clone(),
-            parameters: parameters.clone(),
+            parameters,
             body,
             effects: effects.clone(),
         };
@@ -206,7 +244,7 @@ impl Checker {
                 let return_type = return_expr
                     .as_ref()
                     .map(|expr| expr.ty.clone())
-                    .unwrap_or(Type::Unit);
+                    .unwrap_or(TcAstType::Unit);
                 let return_expr_effects = return_expr.as_ref().map(|expr| expr.effects.as_slice());
                 let effects = stmts.iter().map(|stmt| stmt.effects.as_slice());
 
@@ -249,10 +287,12 @@ impl Checker {
                     right: Box::new(right),
                 };
 
+                let operator: TypedBinaryOperator = (*operator).into();
+
                 if !operator.accepts_type(&left_ty, &right_ty) {
                     panic!(
-                        "{operator} cannot be used on types `{:?}` and `{:?}`",
-                        left_ty, right_ty
+                        "{} cannot be used on types `{:?}` and `{:?}`",
+                        *operator, left_ty, right_ty
                     );
                 }
 
@@ -267,8 +307,10 @@ impl Checker {
 
                 let effects = expr.effects.clone();
 
+                let operator: TypedUnaryOperator = (*operator).into();
+
                 if !operator.accepts_type(&expr.ty) {
-                    panic!("{operator} cannot be used on type `{:?}`", expr.ty);
+                    panic!("{} cannot be used on type `{:?}`", *operator, expr.ty);
                 }
 
                 let expr_ty = operator.result_type(&expr.ty);
@@ -298,10 +340,17 @@ impl Checker {
                 }
             }
             AstExpression::Literal(literal) => {
-                let ty = literal.ty.clone();
+                let ty = self
+                    .type_resolver
+                    .borrow()
+                    .resolve(&literal.ty)
+                    .expect("Failed to resolve type");
 
                 TypedExpression {
-                    expr: Expression::Literal(literal.clone()),
+                    expr: Expression::Literal(Literal {
+                        ty: ty.clone(),
+                        value: literal.value.clone(),
+                    }),
                     ty,
                     effects: vec![],
                 }
@@ -380,14 +429,17 @@ impl Checker {
             }
             AstExpression::StructInit {
                 use_default,
-                name,
+                ty,
                 fields,
             } => {
-                let Some(ty) = self.scope.borrow().get(name) else {
-                    panic!("Struct `{name}` is not present in current scope.");
+                let Some(ty) = self.type_resolver.borrow().resolve_alias(match ty {
+                    AstType::Custom(val) => val,
+                    _ => todo!(),
+                }) else {
+                    panic!("Struct `{ty:?}` is not present in current scope.");
                 };
                 let Some(struct_fields) = ty.clone().as_struct() else {
-                    panic!("`{name}` is not a struct.");
+                    panic!("`{ty:?}` is not a struct.");
                 };
 
                 if *use_default {
@@ -410,7 +462,7 @@ impl Checker {
                     let Some((_, expected_ty)) =
                         struct_fields.iter().find(|(name, _)| name == field_name)
                     else {
-                        panic!("Field `{field_name} does not exist on struct `{name}`.");
+                        panic!("Field `{field_name} does not exist on struct `{ty:?}`.");
                     };
 
                     if field_ty != expected_ty {
@@ -450,12 +502,12 @@ impl Checker {
 
                 let expr = Expression::StructInit {
                     use_default: *use_default,
-                    name: name.clone(),
+                    ty: ty.clone(),
                     fields: sorted_fields,
                 };
 
                 TypedExpression {
-                    ty: Type::StructInstance { of: Box::new(ty) },
+                    ty: TcAstType::StructInstance { of: Box::new(ty) },
                     effects,
                     expr,
                 }

@@ -360,6 +360,7 @@ impl<'a> Parser<'a> {
                             ),
                         }
                     }
+                    LiteralKind::Char { .. } => todo!(),
                     LiteralKind::Int { empty_int, .. } => {
                         if empty_int {
                             panic!("Empty integer.");
@@ -374,7 +375,14 @@ impl<'a> Parser<'a> {
                             ),
                         }
                     }
-                    _ => todo!(),
+                    LiteralKind::Float { .. } => Literal {
+                        ty: Type::FloatN,
+                        value: LiteralValue::Float(
+                            self.token_stream.source()[token.start..token.end]
+                                .parse()
+                                .unwrap(),
+                        ),
+                    },
                 },
                 _ => unreachable!(),
             };

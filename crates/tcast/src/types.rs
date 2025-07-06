@@ -24,9 +24,6 @@ pub enum Type {
     Struct {
         fields: Vec<(String, Type)>,
     },
-    StructInstance {
-        of: Box<Type>,
-    },
 }
 
 impl Type {
@@ -99,13 +96,6 @@ impl Type {
     pub fn as_struct(self) -> Option<Vec<(String, Type)>> {
         match self {
             Self::Struct { fields } => Some(fields),
-            _ => None,
-        }
-    }
-
-    pub fn as_struct_instance(self) -> Option<Box<Type>> {
-        match self {
-            Self::StructInstance { of } => Some(of),
             _ => None,
         }
     }

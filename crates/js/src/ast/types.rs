@@ -13,7 +13,6 @@ impl fmt::Display for TypeWrapper {
                 Type::Bool => "Boolean".to_string(),
                 Type::Char | Type::String => "String".to_string(),
                 ty if ty.is_numeric() => "Number".to_string(),
-                Type::StructInstance { of } => Self(of.as_ref().clone()).to_string(),
                 Type::Unit => String::new(),
                 _ => todo!(),
             }

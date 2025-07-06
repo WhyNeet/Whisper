@@ -1,3 +1,5 @@
+use std::mem;
+
 use common::effects::Effect;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
@@ -23,6 +25,9 @@ pub enum Type {
     },
     Struct {
         fields: Vec<(String, Type)>,
+    },
+    Infer {
+        candidate: Box<Type>,
     },
 }
 
@@ -79,6 +84,13 @@ impl Type {
     pub fn is_string(&self) -> bool {
         *self == Type::String
     }
+
+    pub fn is_inferred(&self) -> bool {
+        mem::discriminant(self)
+            == mem::discriminant(&Type::Infer {
+                candidate: Box::new(Type::Unit),
+            })
+    }
 }
 
 impl Type {
@@ -97,6 +109,24 @@ impl Type {
         match self {
             Self::Struct { fields } => Some(fields),
             _ => None,
+        }
+    }
+
+    pub fn as_inferred(self) -> Option<Box<Type>> {
+        match self {
+            Self::Infer { candidate } => Some(candidate),
+            _ => None,
+        }
+    }
+
+    pub fn can_infer(&self, from: &Type) -> bool {
+        match from {
+            Type::Infer { candidate } => match self {
+                ty if ty.is_int() || ty.is_uint() => candidate.is_int() || candidate.is_uint(),
+                ty if ty.is_float() => candidate.is_float(),
+                _ => false,
+            },
+            _ => false,
         }
     }
 }

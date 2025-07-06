@@ -116,13 +116,29 @@ impl<'a> Cursor<'a> {
             '%' => TokenKind::Percent,
             c if is_whitespace(c) => return self.next_token(),
             '0'..='9' => {
-                while !self.is_eof() && self.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                let mut is_float = false;
+                while !self.is_eof()
+                    && self
+                        .peek()
+                        .map(|c| c.is_ascii_digit() || c == '.' && !is_float)
+                        .unwrap_or(false)
+                {
+                    if self.peek().unwrap() == '.' {
+                        is_float = true;
+                    }
                     self.next();
                 }
                 TokenKind::Literal {
-                    kind: LiteralKind::Int {
-                        base: Base::Decimal,
-                        empty_int: false,
+                    kind: if is_float {
+                        LiteralKind::Float {
+                            base: Base::Decimal,
+                            empty_exponent: true,
+                        }
+                    } else {
+                        LiteralKind::Int {
+                            base: Base::Decimal,
+                            empty_int: false,
+                        }
                     },
                 }
             }

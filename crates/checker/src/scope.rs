@@ -15,17 +15,15 @@ impl Scope {
 
         values.insert(
             "console".to_string(),
-            Type::StructInstance {
-                of: Box::new(Type::Struct {
-                    fields: vec![(
-                        "log".to_string(),
-                        Type::Fn {
-                            return_type: Box::new(Type::Unit),
-                            params: vec![Type::String],
-                            effects: vec![Effect::Io],
-                        },
-                    )],
-                }),
+            Type::Struct {
+                fields: vec![(
+                    "log".to_string(),
+                    Type::Fn {
+                        return_type: Box::new(Type::Unit),
+                        params: vec![Type::String],
+                        effects: vec![Effect::Io],
+                    },
+                )],
             },
         );
 

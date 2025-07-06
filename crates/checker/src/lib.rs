@@ -162,6 +162,9 @@ impl Checker {
         let prev_scope = self
             .scope
             .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
+        let prev_resolver = self
+            .type_resolver
+            .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
         let scope = self.scope.borrow();
         let resolver = self.type_resolver.borrow();
         for (name, ty) in parameters {
@@ -174,6 +177,7 @@ impl Checker {
         let return_type = resolver
             .resolve(return_type)
             .expect("Failed to resolve type");
+        drop(resolver);
         let body = self.expression(body);
 
         if body.ty != return_type {
@@ -193,7 +197,12 @@ impl Checker {
 
         let params = parameters
             .into_iter()
-            .map(|(_, ty)| resolver.resolve(ty).expect("Failed to resolve type"))
+            .map(|(_, ty)| {
+                self.type_resolver
+                    .borrow()
+                    .resolve(ty)
+                    .expect("Failed to resolve type")
+            })
             .collect::<Vec<_>>();
 
         let parameters = parameters
@@ -220,6 +229,8 @@ impl Checker {
             effects: effects.clone(),
         };
 
+        self.type_resolver.replace(prev_resolver);
+
         TypedStatement {
             effects: effects.clone(),
             stmt,
@@ -232,6 +243,9 @@ impl Checker {
                 let prev_scope = self
                     .scope
                     .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
+                let prev_resolver = self
+                    .type_resolver
+                    .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
 
                 let stmts = stmts
                     .into_iter()
@@ -261,6 +275,7 @@ impl Checker {
                 let expr = Expression::Block { stmts, return_expr };
 
                 self.scope.replace(prev_scope);
+                self.type_resolver.replace(prev_resolver);
 
                 TypedExpression {
                     effects,
@@ -407,10 +422,9 @@ impl Checker {
             }
             AstExpression::MemberAccess { expr, ident } => {
                 let expr = self.expression(expr);
-                let Some(fields) = expr.ty.clone().as_struct_instance() else {
+                let Some(fields) = expr.ty.clone().as_struct() else {
                     panic!("Expression does not contain member `{ident}`");
                 };
-                let fields = fields.as_struct().unwrap();
 
                 let Some((_, field_ty)) = fields.into_iter().find(|(name, _)| name == ident) else {
                     panic!("Expression does not contain member `{ident}`");
@@ -506,11 +520,7 @@ impl Checker {
                     fields: sorted_fields,
                 };
 
-                TypedExpression {
-                    ty: TcAstType::StructInstance { of: Box::new(ty) },
-                    effects,
-                    expr,
-                }
+                TypedExpression { ty, effects, expr }
             }
         }
     }

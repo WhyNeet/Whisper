@@ -6,18 +6,28 @@ use tcast::types::Type;
 
 #[derive(Debug, Default)]
 pub struct TypeResolver {
+    enclosing: Option<Rc<TypeResolver>>,
     types: Rc<RefCell<HashMap<String, Type>>>,
 }
 
 impl TypeResolver {
+    pub fn new(enclosing: Rc<TypeResolver>) -> Self {
+        Self {
+            enclosing: Some(enclosing),
+            ..Default::default()
+        }
+    }
+}
+
+impl TypeResolver {
     pub fn resolve(&self, ty: &AstType) -> Option<TcAstType> {
-        if let AstType::Custom(ty) = ty {
+        if let AstType::Custom(name) = ty {
             return self
                 .types
                 .borrow()
-                .get(ty)
+                .get(name)
                 .cloned()
-                .map(|of| Type::StructInstance { of: Box::new(of) });
+                .or_else(|| self.enclosing.as_ref().map(|r| r.resolve(ty)).flatten());
         }
 
         Some(match ty {
@@ -42,7 +52,12 @@ impl TypeResolver {
     }
 
     pub fn resolve_alias(&self, alias: &str) -> Option<TcAstType> {
-        return self.types.borrow().get(alias).cloned();
+        self.types.borrow().get(alias).cloned().or_else(|| {
+            self.enclosing
+                .as_ref()
+                .map(|r| r.resolve_alias(alias))
+                .flatten()
+        })
     }
 
     pub fn insert(&self, alias: String, ty: TcAstType) -> bool {

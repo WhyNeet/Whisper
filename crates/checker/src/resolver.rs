@@ -37,7 +37,9 @@ impl TypeResolver {
             AstType::Int16 => TcAstType::Int16,
             AstType::Int32 => TcAstType::Int32,
             AstType::Int64 => TcAstType::Int64,
-            AstType::IntN => TcAstType::Int32,
+            AstType::IntN => TcAstType::Infer {
+                candidate: Box::new(TcAstType::Int32),
+            },
             AstType::UInt8 => TcAstType::UInt8,
             AstType::UInt16 => TcAstType::UInt16,
             AstType::UInt32 => TcAstType::UInt32,
@@ -45,7 +47,9 @@ impl TypeResolver {
             AstType::String => TcAstType::String,
             AstType::Float32 => TcAstType::Float32,
             AstType::Float64 => TcAstType::Float64,
-            AstType::FloatN => TcAstType::Float32,
+            AstType::FloatN => TcAstType::Infer {
+                candidate: Box::new(TcAstType::Float32),
+            },
             AstType::Unit => TcAstType::Unit,
             _ => unreachable!(),
         })

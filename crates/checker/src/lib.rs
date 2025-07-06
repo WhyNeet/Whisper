@@ -460,32 +460,38 @@ impl Checker {
                     todo!("use_default");
                 }
 
-                let fields = fields
+                let mut fields = fields
                     .into_iter()
                     .map(|(name, expr)| (name.clone(), self.expression(expr)))
                     .collect::<Vec<_>>();
 
                 let mut covered_fields = HashSet::new();
 
-                for (field_name, field_expr) in fields.iter() {
+                for idx in 0..fields.len() {
+                    let (field_name, field_expr) = fields.get_mut(idx).unwrap();
+
                     if covered_fields.contains(field_name) {
                         panic!("Field `{field_name}` is already defined.");
                     }
 
-                    let field_ty = &field_expr.ty;
+                    let field_ty = field_expr.ty.clone();
                     let Some((_, expected_ty)) =
                         struct_fields.iter().find(|(name, _)| name == field_name)
                     else {
                         panic!("Field `{field_name} does not exist on struct `{ty:?}`.");
                     };
 
-                    if field_ty != expected_ty {
-                        panic!(
-                            "Field expected expression of type `{expected_ty:?}`, but found `{field_ty:?}`."
-                        );
+                    if field_ty.is_inferred() && expected_ty.can_infer(&field_ty) {
+                        field_expr.ty = expected_ty.clone();
+                    } else {
+                        if field_ty != *expected_ty {
+                            panic!(
+                                "Field expected expression of type `{expected_ty:?}`, but found `{field_ty:?}`."
+                            );
+                        }
                     }
 
-                    covered_fields.insert(field_name);
+                    covered_fields.insert(field_name.clone());
                 }
 
                 for (name, _) in struct_fields.iter() {

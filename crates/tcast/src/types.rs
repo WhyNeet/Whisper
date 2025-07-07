@@ -85,6 +85,15 @@ impl Type {
         *self == Type::String
     }
 
+    pub fn is_fn(&self) -> bool {
+        mem::discriminant(self)
+            == mem::discriminant(&Type::Fn {
+                return_type: Box::new(Type::Unit),
+                params: vec![],
+                effects: vec![],
+            })
+    }
+
     pub fn is_inferred(&self) -> bool {
         mem::discriminant(self)
             == mem::discriminant(&Type::Infer {

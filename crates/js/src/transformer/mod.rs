@@ -71,6 +71,7 @@ impl TypedAstTransformer {
                 );
                 vec![self.struct_declaration(name, fields)]
             }
+            TStatement::Impl { ident, methods } => todo!(),
         }
     }
 

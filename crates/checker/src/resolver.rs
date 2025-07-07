@@ -1,5 +1,6 @@
 use ast::types::Type as AstType;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use tcast::stmt::StructMethod;
 use tcast::types::Type as TcAstType;
 
 use tcast::types::Type;
@@ -8,6 +9,7 @@ use tcast::types::Type;
 pub struct TypeResolver {
     enclosing: Option<Rc<TypeResolver>>,
     types: Rc<RefCell<HashMap<String, Type>>>,
+    impls: Rc<RefCell<HashMap<String, Vec<StructMethod>>>>,
 }
 
 impl TypeResolver {
@@ -53,6 +55,18 @@ impl TypeResolver {
             AstType::Unit => TcAstType::Unit,
             _ => unreachable!(),
         })
+    }
+
+    pub fn add_impl(&self, alias: String, mut methods: Vec<StructMethod>) {
+        self.impls
+            .borrow_mut()
+            .entry(alias)
+            .or_default()
+            .append(&mut methods);
+    }
+
+    pub fn resolve_impl(&self, alias: &str) -> Option<Vec<StructMethod>> {
+        self.impls.borrow().get(alias).cloned()
     }
 
     pub fn resolve_alias(&self, alias: &str) -> Option<TcAstType> {

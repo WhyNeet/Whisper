@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashSet, iter, rc::Rc};
 use ast::{
     expr::Expression as AstExpression,
     module::Module as AstModule,
-    stmt::{Statement as AstStatement, StructField},
+    stmt::{Statement as AstStatement, StructField, StructMethod},
     types::Type as AstType,
 };
 use common::{annotations::Annotation, effects::Effect};
@@ -14,7 +14,7 @@ use tcast::{
     expr::{Expression, Literal, TypedExpression},
     module::Module,
     ops::{TypedBinaryOperator, TypedUnaryOperator},
-    stmt::{Statement, StructField as TStructField, TypedStatement},
+    stmt::{Statement, StructField as TStructField, StructMethod as TStructMethod, TypedStatement},
     types::Type as TcAstType,
 };
 
@@ -87,6 +87,71 @@ impl Checker {
             AstStatement::StructDeclaration { name, fields } => {
                 self.struct_declaration(name, fields)
             }
+            AstStatement::Impl { ident, methods } => self.impl_stmt(ident, methods),
+        }
+    }
+
+    fn impl_stmt(&self, ident: &String, methods: &Vec<StructMethod>) -> TypedStatement {
+        let methods = methods
+            .into_iter()
+            .map(|method| {
+                let parameters = method
+                    .parameters
+                    .iter()
+                    .map(|(name, ty)| {
+                        (
+                            name.clone(),
+                            self.type_resolver
+                                .borrow()
+                                .resolve(ty)
+                                .expect("Failed to resolve type"),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                TStructMethod {
+                    name: method.name.clone(),
+                    annotations: method.annotations.clone(),
+                    body: {
+                        let prev_scope = self
+                            .scope
+                            .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
+                        let prev_resolver = self
+                            .type_resolver
+                            .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
+                        let scope = self.scope.borrow();
+                        for (name, ty) in parameters.iter() {
+                            scope.insert(name.clone(), ty.clone());
+                        }
+                        drop(scope);
+                        let expr = self.expression(&method.body);
+
+                        self.type_resolver.replace(prev_resolver);
+                        self.scope.replace(prev_scope);
+
+                        expr
+                    },
+                    effects: method.effects.clone(),
+                    is_pub: method.is_pub,
+                    parameters,
+                    return_type: self
+                        .type_resolver
+                        .borrow()
+                        .resolve(&method.return_type)
+                        .expect("Failed to resolve type"),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let stmt = Statement::Impl {
+            ident: ident.clone(),
+            methods: methods.clone(),
+        };
+
+        self.type_resolver.borrow().add_impl(ident.clone(), methods);
+
+        TypedStatement {
+            effects: vec![],
+            stmt,
         }
     }
 

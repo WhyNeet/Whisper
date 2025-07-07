@@ -24,11 +24,26 @@ pub enum Statement {
         name: String,
         fields: Vec<StructField>,
     },
+    Impl {
+        ident: String,
+        methods: Vec<StructMethod>,
+    },
 }
 
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub name: String,
     pub ty: Type,
+    pub is_pub: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructMethod {
+    pub name: String,
+    pub return_type: Type,
+    pub parameters: Vec<(String, Type)>,
+    pub body: Expression,
+    pub effects: Vec<Effect>,
+    pub annotations: Vec<Annotation>,
     pub is_pub: bool,
 }

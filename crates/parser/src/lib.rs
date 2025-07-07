@@ -1,8 +1,9 @@
 use ast::expr::{Expression, Literal};
 use ast::module::Module;
-use ast::stmt::{Statement, StructField};
+use ast::stmt::{Statement, StructField, StructMethod};
 use ast::types::Type;
 use common::annotations::Annotation;
+use common::effects::Effect;
 use common::literal::LiteralValue;
 use common::ops::{BinaryOperator, UnaryOperator};
 use core::unreachable;
@@ -63,9 +64,70 @@ impl<'a> Parser<'a> {
             self.var_decl()
         } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
             self.struct_decl()
+        } else if self.matches(TokenKind::Keyword(Keyword::Impl)).is_some() {
+            self.impl_stmt()
         } else {
             self.expr_stmt()
         }
+    }
+
+    fn impl_stmt(&mut self) -> Statement {
+        let ident = self
+            .matches(TokenKind::Ident)
+            .expect("Expected struct identifier");
+        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+
+        self.matches(TokenKind::OpenBrace)
+            .expect("Expected opening brace");
+
+        let mut methods = vec![];
+
+        while !self.matches(TokenKind::CloseBrace).is_some() {
+            let is_pub = self.matches(TokenKind::Keyword(Keyword::Pub)).is_some();
+
+            self.matches(TokenKind::Keyword(Keyword::Fn))
+                .expect("Expected `fn` keyword");
+
+            let effects = self.effects();
+
+            let name = self.matches(TokenKind::Ident).expect("Expected identifier");
+            let name = self.token_stream.source()[name.start..name.end].to_string();
+
+            self.matches(TokenKind::OpenParen)
+                .expect("Expected opening parenthesis");
+            let parameters = self.fn_params();
+            self.matches(TokenKind::CloseParen)
+                .expect("Expected closing parenthesis.");
+
+            let return_type = if self.matches(TokenKind::RArrow).is_some() {
+                let ty = self.matches(TokenKind::Ident).expect("Expected type");
+                let ty = self.token_stream.source()[ty.start..ty.end]
+                    .try_into()
+                    .expect("Invalid type name");
+                ty
+            } else {
+                Type::Unit
+            };
+
+            self.matches(TokenKind::Eq)
+                .expect("Expected `=` before function body");
+
+            let body = self.expression();
+
+            let method = StructMethod {
+                name,
+                is_pub,
+                annotations: vec![],
+                effects,
+                parameters,
+                return_type,
+                body,
+            };
+
+            methods.push(method);
+        }
+
+        Statement::Impl { ident, methods }
     }
 
     fn struct_decl(&mut self) -> Statement {
@@ -122,8 +184,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn fn_decl(&mut self, annotations: Vec<Annotation>) -> Statement {
-        let effects = if self.matches(TokenKind::OpenBrace).is_some() {
+    fn effects(&mut self) -> Vec<Effect> {
+        if self.matches(TokenKind::OpenBrace).is_some() {
             let mut effects = vec![];
 
             if !self.matches(TokenKind::CloseBrace).is_some() {
@@ -149,7 +211,11 @@ impl<'a> Parser<'a> {
             effects
         } else {
             vec![]
-        };
+        }
+    }
+
+    fn fn_decl(&mut self, annotations: Vec<Annotation>) -> Statement {
+        let effects = self.effects();
 
         let name = self.matches(TokenKind::Ident).expect("Expected identifier");
         let name = self.token_stream.source()[name.start..name.end].to_string();

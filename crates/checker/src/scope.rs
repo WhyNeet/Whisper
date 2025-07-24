@@ -3,10 +3,15 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use common::effects::Effect;
 use tcast::types::Type;
 
-#[derive(Debug, Clone)]
+use crate::resolver::TypeResolver;
+
+#[derive(Debug, Clone, Default)]
 pub struct Scope {
+    id: u64,
     enclosing: Option<Rc<Scope>>,
     values: RefCell<HashMap<String, Type>>,
+    resolver: Rc<TypeResolver>,
+    descendants: Rc<RefCell<Vec<Rc<Scope>>>>,
 }
 
 impl Scope {
@@ -24,22 +29,38 @@ impl Scope {
                         effects: vec![Effect::Io],
                     },
                 )],
+                alias: "Console".to_string(),
             },
         );
 
         Self {
+            id: 0,
             enclosing: Default::default(),
             values: RefCell::new(values),
+            resolver: Default::default(),
+            descendants: Default::default(),
         }
+    }
+
+    pub fn id(&self) -> u64 {
+        self.id
     }
 }
 
 impl Scope {
-    pub fn new(enclosing: Rc<Scope>) -> Self {
-        Self {
-            enclosing: Some(enclosing),
+    pub fn new(enclosing: Rc<Scope>) -> Rc<Self> {
+        let mut desc = enclosing.descendants.borrow_mut();
+        let id = desc.len();
+        let scope = Rc::new(Self {
+            enclosing: Some(Rc::clone(&enclosing)),
+            id: id as u64,
+            resolver: Rc::new(TypeResolver::new(Rc::clone(&enclosing.resolver))),
             ..Scope::js_default()
-        }
+        });
+
+        desc.push(Rc::clone(&scope));
+
+        scope
     }
 
     pub fn insert(&self, ident: String, ty: Type) -> bool {
@@ -53,5 +74,9 @@ impl Scope {
                 .map(|scope| scope.get(ident))
                 .unwrap_or(None)
         })
+    }
+
+    pub fn type_resolver(&self) -> &TypeResolver {
+        &self.resolver
     }
 }

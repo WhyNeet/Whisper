@@ -66,7 +66,12 @@ impl TypeResolver {
     }
 
     pub fn resolve_impl(&self, alias: &str) -> Option<Vec<StructMethod>> {
-        self.impls.borrow().get(alias).cloned()
+        self.impls.borrow().get(alias).cloned().or_else(|| {
+            self.enclosing
+                .as_ref()
+                .map(|r| r.resolve_impl(alias))
+                .flatten()
+        })
     }
 
     pub fn resolve_alias(&self, alias: &str) -> Option<TcAstType> {

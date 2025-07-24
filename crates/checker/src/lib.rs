@@ -18,11 +18,10 @@ use tcast::{
     types::Type as TcAstType,
 };
 
-use crate::{resolver::TypeResolver, scope::Scope};
+use crate::scope::Scope;
 
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
-    type_resolver: RefCell<Rc<TypeResolver>>,
     main_fn: RefCell<Option<String>>,
 }
 
@@ -30,7 +29,6 @@ impl Checker {
     pub fn new() -> Self {
         Self {
             scope: RefCell::new(Rc::new(Scope::js_default())),
-            type_resolver: Default::default(),
             main_fn: Default::default(),
         }
     }
@@ -101,8 +99,9 @@ impl Checker {
                     .map(|(name, ty)| {
                         (
                             name.clone(),
-                            self.type_resolver
+                            self.scope
                                 .borrow()
+                                .type_resolver()
                                 .resolve(ty)
                                 .expect("Failed to resolve type"),
                         )
@@ -114,10 +113,7 @@ impl Checker {
                     body: {
                         let prev_scope = self
                             .scope
-                            .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
-                        let prev_resolver = self
-                            .type_resolver
-                            .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
+                            .replace_with(|scope| Scope::new(Rc::clone(scope)));
                         let scope = self.scope.borrow();
                         for (name, ty) in parameters.iter() {
                             scope.insert(name.clone(), ty.clone());
@@ -125,7 +121,6 @@ impl Checker {
                         drop(scope);
                         let expr = self.expression(&method.body);
 
-                        self.type_resolver.replace(prev_resolver);
                         self.scope.replace(prev_scope);
 
                         expr
@@ -134,8 +129,9 @@ impl Checker {
                     is_pub: method.is_pub,
                     parameters,
                     return_type: self
-                        .type_resolver
+                        .scope
                         .borrow()
+                        .type_resolver()
                         .resolve(&method.return_type)
                         .expect("Failed to resolve type"),
                 }
@@ -147,7 +143,10 @@ impl Checker {
             methods: methods.clone(),
         };
 
-        self.type_resolver.borrow().add_impl(ident.clone(), methods);
+        self.scope
+            .borrow()
+            .type_resolver()
+            .add_impl(ident.clone(), methods);
 
         TypedStatement {
             effects: vec![],
@@ -161,14 +160,16 @@ impl Checker {
             .map(|field| TStructField {
                 name: field.name.clone(),
                 ty: self
-                    .type_resolver
+                    .scope
                     .borrow()
+                    .type_resolver()
                     .resolve(&field.ty)
                     .expect("Cannot resolve type"),
                 is_pub: field.is_pub,
             })
             .collect::<Vec<_>>();
         let ty = TcAstType::Struct {
+            alias: name.clone(),
             fields: fields
                 .iter()
                 .map(|field| (field.name.clone(), field.ty.clone()))
@@ -180,7 +181,7 @@ impl Checker {
             fields: fields.clone(),
         };
 
-        if self.type_resolver.borrow().insert(name.clone(), ty) {
+        if self.scope.borrow().type_resolver().insert(name.clone(), ty) {
             panic!("Struct `{name}` is already defined in current scope.");
         }
 
@@ -226,23 +227,19 @@ impl Checker {
     ) -> TypedStatement {
         let prev_scope = self
             .scope
-            .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
-        let prev_resolver = self
-            .type_resolver
-            .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
+            .replace_with(|scope| Scope::new(Rc::clone(scope)));
         let scope = self.scope.borrow();
-        let resolver = self.type_resolver.borrow();
+        let resolver = scope.type_resolver();
         for (name, ty) in parameters {
             scope.insert(
                 name.clone(),
                 resolver.resolve(ty).expect("Failed to resolve type"),
             );
         }
-        drop(scope);
         let return_type = resolver
             .resolve(return_type)
             .expect("Failed to resolve type");
-        drop(resolver);
+        drop(scope);
         let body = self.expression(body);
 
         if body.ty != return_type {
@@ -263,8 +260,9 @@ impl Checker {
         let params = parameters
             .into_iter()
             .map(|(_, ty)| {
-                self.type_resolver
+                self.scope
                     .borrow()
+                    .type_resolver()
                     .resolve(ty)
                     .expect("Failed to resolve type")
             })
@@ -294,8 +292,6 @@ impl Checker {
             effects: effects.clone(),
         };
 
-        self.type_resolver.replace(prev_resolver);
-
         TypedStatement {
             effects: effects.clone(),
             stmt,
@@ -307,10 +303,7 @@ impl Checker {
             AstExpression::Block { stmts, return_expr } => {
                 let prev_scope = self
                     .scope
-                    .replace_with(|scope| Rc::new(Scope::new(Rc::clone(scope))));
-                let prev_resolver = self
-                    .type_resolver
-                    .replace_with(|r| Rc::new(TypeResolver::new(Rc::clone(r))));
+                    .replace_with(|scope| Scope::new(Rc::clone(scope)));
 
                 let stmts = stmts
                     .into_iter()
@@ -340,7 +333,6 @@ impl Checker {
                 let expr = Expression::Block { stmts, return_expr };
 
                 self.scope.replace(prev_scope);
-                self.type_resolver.replace(prev_resolver);
 
                 TypedExpression {
                     effects,
@@ -421,8 +413,9 @@ impl Checker {
             }
             AstExpression::Literal(literal) => {
                 let ty = self
-                    .type_resolver
+                    .scope
                     .borrow()
+                    .type_resolver()
                     .resolve(&literal.ty)
                     .expect("Failed to resolve type");
 
@@ -487,11 +480,36 @@ impl Checker {
             }
             AstExpression::MemberAccess { expr, ident } => {
                 let expr = self.expression(expr);
-                let Some(fields) = expr.ty.clone().as_struct() else {
+                let Some((alias, fields)) = expr.ty.clone().as_struct() else {
                     panic!("Expression does not contain member `{ident}`");
                 };
 
-                let Some((_, field_ty)) = fields.into_iter().find(|(name, _)| name == ident) else {
+                let impls = self.scope.borrow().type_resolver().resolve_impl(&alias);
+
+                let Some((_, field_ty)) = fields
+                    .into_iter()
+                    .find(|(name, _)| name == ident)
+                    .or_else(|| {
+                        impls
+                            .map(|impls| {
+                                impls.into_iter().find(|i| i.name == *ident).map(|method| {
+                                    (
+                                        method.name,
+                                        TcAstType::Fn {
+                                            return_type: Box::new(method.return_type),
+                                            params: method
+                                                .parameters
+                                                .into_iter()
+                                                .map(|(_, ty)| ty)
+                                                .collect(),
+                                            effects: method.effects,
+                                        },
+                                    )
+                                })
+                            })
+                            .flatten()
+                    })
+                else {
                     panic!("Expression does not contain member `{ident}`");
                 };
 
@@ -511,13 +529,13 @@ impl Checker {
                 ty,
                 fields,
             } => {
-                let Some(ty) = self.type_resolver.borrow().resolve_alias(match ty {
+                let Some(ty) = self.scope.borrow().type_resolver().resolve_alias(match ty {
                     AstType::Custom(val) => val,
                     _ => todo!(),
                 }) else {
                     panic!("Struct `{ty:?}` is not present in current scope.");
                 };
-                let Some(struct_fields) = ty.clone().as_struct() else {
+                let Some((_, struct_fields)) = ty.clone().as_struct() else {
                     panic!("`{ty:?}` is not a struct.");
                 };
 

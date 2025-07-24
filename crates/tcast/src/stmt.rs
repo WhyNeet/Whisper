@@ -31,6 +31,10 @@ pub enum Statement {
         ident: String,
         methods: Vec<StructMethod>,
     },
+    Annotated {
+        annotations: Vec<Annotation>,
+        stmt: Box<TypedStatement>,
+    },
 }
 
 #[derive(Debug, Clone)]

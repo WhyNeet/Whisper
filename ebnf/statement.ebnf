@@ -6,7 +6,7 @@ expr_stmt = expression ";" ;
 
 declaration_stmt = fn_declaration | var_declaration | struct_declaration ;
 
-fn_declaration = { "@" IDENTIFIER } "fn" [ "{" [ IDENTIFIER ] { "," IDENTIFIER } "}" ] IDENTIFIER "(" fn_params ")" [ "->" TYPE ] "=" expression ;
+fn_declaration = { "@" IDENTIFIER } [ "extern" ] "fn" [ "{" [ IDENTIFIER ] { "," IDENTIFIER } "}" ] IDENTIFIER "(" fn_params ")" [ "->" TYPE ] [ "=" expression ] ;
 fn_params = [ IDENTIFIER ":" TYPE ] { "," IDENTIFIER ":" TYPE } ;
 
 var_declaration = "let" [ "mut" ] IDENTIFIER "=" expression ;

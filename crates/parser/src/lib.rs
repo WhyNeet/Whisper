@@ -43,7 +43,13 @@ impl<'a> Parser<'a> {
 
     fn statement(&mut self) -> Statement {
         if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
-            self.fn_decl(vec![])
+            self.fn_decl(vec![], false)
+        } else if self
+            .matches(TokenKind::Keyword(Keyword::Extern))
+            .and_then(|_| self.matches(TokenKind::Keyword(Keyword::Fn)))
+            .is_some()
+        {
+            self.fn_decl(vec![], true)
         } else if self.matches_peek(TokenKind::At).is_some() {
             let mut annotations = vec![];
 
@@ -56,19 +62,44 @@ impl<'a> Parser<'a> {
                 );
             }
 
+            let is_extern = self.matches(TokenKind::Keyword(Keyword::Extern)).is_some();
+
             self.matches(TokenKind::Keyword(Keyword::Fn))
                 .expect("Expected `fn` keyword");
 
-            self.fn_decl(annotations)
+            self.fn_decl(annotations, is_extern)
         } else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
             self.var_decl()
         } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
             self.struct_decl()
         } else if self.matches(TokenKind::Keyword(Keyword::Impl)).is_some() {
             self.impl_stmt()
+        } else if self
+            .matches(TokenKind::Keyword(Keyword::Namespace))
+            .is_some()
+        {
+            self.namespace_stmt()
         } else {
             self.expr_stmt()
         }
+    }
+
+    fn namespace_stmt(&mut self) -> Statement {
+        let name = self
+            .matches(TokenKind::Ident)
+            .expect("Expected namespace identifier");
+        let name = self.token_stream.source()[name.start..name.end].to_string();
+
+        self.matches(TokenKind::OpenBrace)
+            .expect("Expected opening brace");
+
+        let mut stmts = vec![];
+
+        while !self.matches(TokenKind::CloseBrace).is_some() {
+            stmts.push(self.statement());
+        }
+
+        Statement::Namespace { name, stmts }
     }
 
     fn impl_stmt(&mut self) -> Statement {
@@ -214,7 +245,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn fn_decl(&mut self, annotations: Vec<Annotation>) -> Statement {
+    fn fn_decl(&mut self, annotations: Vec<Annotation>, is_extern: bool) -> Statement {
         let effects = self.effects();
 
         let name = self.matches(TokenKind::Ident).expect("Expected identifier");
@@ -237,10 +268,13 @@ impl<'a> Parser<'a> {
             Type::Unit
         };
 
-        self.matches(TokenKind::Eq)
-            .expect("Expected `=` before function body");
+        let body = self
+            .matches(TokenKind::Eq)
+            .and_then(|_| Some(self.expression()));
 
-        let body = self.expression();
+        if body.is_none() {
+            self.matches(TokenKind::Semi);
+        }
 
         Statement::FunctionDeclaration {
             name,
@@ -249,6 +283,7 @@ impl<'a> Parser<'a> {
             body,
             effects,
             annotations,
+            is_extern,
         }
     }
 

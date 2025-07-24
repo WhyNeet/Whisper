@@ -1,63 +1,24 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use common::effects::Effect;
 use tcast::types::Type;
 
 use crate::resolver::TypeResolver;
 
 #[derive(Debug, Clone, Default)]
 pub struct Scope {
-    id: u64,
     enclosing: Option<Rc<Scope>>,
     values: RefCell<HashMap<String, Type>>,
     resolver: Rc<TypeResolver>,
-    namespaces: RefCell<HashMap<String, Rc<Scope>>>,
-    descendants: Rc<RefCell<Vec<Rc<Scope>>>>,
-}
-
-impl Scope {
-    pub fn js_default() -> Self {
-        let mut values = HashMap::new();
-
-        values.insert(
-            "console".to_string(),
-            Type::Struct {
-                fields: vec![(
-                    "log".to_string(),
-                    Type::Fn {
-                        return_type: Box::new(Type::Unit),
-                        params: vec![Type::String],
-                        effects: vec![Effect::Io],
-                    },
-                )],
-                alias: "Console".to_string(),
-            },
-        );
-
-        Self {
-            id: 0,
-            values: RefCell::new(values),
-            ..Default::default()
-        }
-    }
-
-    pub fn id(&self) -> u64 {
-        self.id
-    }
+    namespaces: Rc<RefCell<HashMap<String, Rc<Scope>>>>,
 }
 
 impl Scope {
     pub fn new(enclosing: Rc<Scope>) -> Rc<Self> {
-        let mut desc = enclosing.descendants.borrow_mut();
-        let id = desc.len();
         let scope = Rc::new(Self {
             enclosing: Some(Rc::clone(&enclosing)),
-            id: id as u64,
             resolver: Rc::new(TypeResolver::new(Rc::clone(&enclosing.resolver))),
-            ..Scope::js_default()
+            ..Default::default()
         });
-
-        desc.push(Rc::clone(&scope));
 
         scope
     }
@@ -67,26 +28,44 @@ impl Scope {
     }
 
     pub fn get(&self, ident: &str) -> Option<Type> {
-        self.values.borrow().get(ident).cloned().or_else(|| {
-            self.enclosing
-                .as_ref()
-                .map(|scope| scope.get(ident))
-                .unwrap_or(None)
-        })
+        self.values
+            .borrow()
+            .get(ident)
+            .cloned()
+            .or_else(|| {
+                self.namespaces
+                    .borrow()
+                    .get(ident)
+                    .map(|ns| Type::Namespace {
+                        alias: ident.to_string(),
+                        fields: ns
+                            .values
+                            .borrow()
+                            .iter()
+                            .map(|(name, ty)| (name.clone(), ty.clone()))
+                            .collect(),
+                    })
+            })
+            .or_else(|| {
+                self.enclosing
+                    .as_ref()
+                    .map(|scope| scope.get(ident))
+                    .unwrap_or(None)
+            })
     }
 
     pub fn create_namespace(&self, name: String) -> Option<Rc<Scope>> {
-        let ns = Rc::new(Scope::js_default());
+        let scope = Rc::new(Scope::default());
 
         if self
             .namespaces
             .borrow_mut()
-            .insert(name, Rc::clone(&ns))
+            .insert(name, Rc::clone(&scope))
             .is_some()
         {
             None
         } else {
-            Some(ns)
+            Some(scope)
         }
     }
 

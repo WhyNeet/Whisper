@@ -20,6 +20,7 @@ use tcast::{
 
 use crate::scope::Scope;
 
+#[derive(Debug, Default)]
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
     main_fn: RefCell<Option<String>>,
@@ -28,8 +29,7 @@ pub struct Checker {
 impl Checker {
     pub fn new() -> Self {
         Self {
-            scope: RefCell::new(Rc::new(Scope::js_default())),
-            main_fn: Default::default(),
+            ..Default::default()
         }
     }
 }
@@ -108,12 +108,12 @@ impl Checker {
     }
 
     fn namespace_stmt(&self, name: String, stmts: &Vec<AstStatement>) -> TypedStatement {
-        let ns = self
+        let namespace = self
             .scope
             .borrow()
-            .create_namespace(name.clone())
+            .create_namespace(name)
             .expect("Namespace is already declared");
-        let prev_scope = self.scope.replace(ns);
+        let prev_scope = self.scope.replace(namespace);
 
         let stmts = stmts.into_iter().map(|stmt| self.statement(stmt)).collect();
 
@@ -520,7 +520,12 @@ impl Checker {
             }
             AstExpression::MemberAccess { expr, ident } => {
                 let expr = self.expression(expr);
-                let Some((alias, fields)) = expr.ty.clone().as_struct() else {
+                let Some((alias, fields)) = expr
+                    .ty
+                    .clone()
+                    .as_struct()
+                    .or_else(|| expr.ty.clone().as_namespace())
+                else {
                     panic!("Expression does not contain member `{ident}`");
                 };
 

@@ -15,8 +15,9 @@ pub enum Statement {
         name: String,
         return_type: Type,
         parameters: Vec<(String, Type)>,
-        body: TypedExpression,
+        body: Option<TypedExpression>,
         effects: Vec<Effect>,
+        is_extern: bool,
     },
     VariableDeclaration {
         name: String,
@@ -34,6 +35,9 @@ pub enum Statement {
     Annotated {
         annotations: Vec<Annotation>,
         stmt: Box<TypedStatement>,
+    },
+    Namespace {
+        stmts: Vec<TypedStatement>,
     },
 }
 

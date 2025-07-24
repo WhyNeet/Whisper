@@ -145,6 +145,8 @@ pub enum Keyword {
     Pub,
     Default,
     Impl,
+    Extern,
+    Namespace,
 }
 
 impl TryFrom<&str> for Keyword {
@@ -159,6 +161,8 @@ impl TryFrom<&str> for Keyword {
             "pub" => Ok(Self::Pub),
             "default" => Ok(Self::Default),
             "impl" => Ok(Self::Impl),
+            "extern" => Ok(Self::Extern),
+            "namespace" => Ok(Self::Namespace),
             _ => Err("not a keyword."),
         }
     }

@@ -11,6 +11,7 @@ pub struct Scope {
     enclosing: Option<Rc<Scope>>,
     values: RefCell<HashMap<String, Type>>,
     resolver: Rc<TypeResolver>,
+    namespaces: RefCell<HashMap<String, Rc<Scope>>>,
     descendants: Rc<RefCell<Vec<Rc<Scope>>>>,
 }
 
@@ -35,10 +36,8 @@ impl Scope {
 
         Self {
             id: 0,
-            enclosing: Default::default(),
             values: RefCell::new(values),
-            resolver: Default::default(),
-            descendants: Default::default(),
+            ..Default::default()
         }
     }
 
@@ -74,6 +73,21 @@ impl Scope {
                 .map(|scope| scope.get(ident))
                 .unwrap_or(None)
         })
+    }
+
+    pub fn create_namespace(&self, name: String) -> Option<Rc<Scope>> {
+        let ns = Rc::new(Scope::js_default());
+
+        if self
+            .namespaces
+            .borrow_mut()
+            .insert(name, Rc::clone(&ns))
+            .is_some()
+        {
+            None
+        } else {
+            Some(ns)
+        }
     }
 
     pub fn type_resolver(&self) -> &TypeResolver {

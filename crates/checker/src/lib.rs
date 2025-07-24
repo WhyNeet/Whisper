@@ -70,6 +70,7 @@ impl Checker {
                 body,
                 effects,
                 annotations,
+                is_extern,
             } => {
                 if annotations.contains(&Annotation::Main) {
                     if let Some(main_fn) = &*self.main_fn.borrow() {
@@ -77,7 +78,23 @@ impl Checker {
                     }
                     self.main_fn.replace(Some(name.to_string()));
                 }
-                self.fn_declaration(name, parameters, body, return_type, effects)
+
+                if *is_extern && body.is_some() {
+                    panic!("Extern function cannot have a body.");
+                }
+
+                if !*is_extern && body.is_none() {
+                    panic!("Function must have a body.");
+                }
+
+                self.fn_declaration(
+                    name,
+                    parameters,
+                    body.as_ref(),
+                    return_type,
+                    effects,
+                    *is_extern,
+                )
             }
             AstStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
@@ -86,6 +103,25 @@ impl Checker {
                 self.struct_declaration(name, fields)
             }
             AstStatement::Impl { ident, methods } => self.impl_stmt(ident, methods),
+            AstStatement::Namespace { name, stmts } => self.namespace_stmt(name.clone(), stmts),
+        }
+    }
+
+    fn namespace_stmt(&self, name: String, stmts: &Vec<AstStatement>) -> TypedStatement {
+        let ns = self
+            .scope
+            .borrow()
+            .create_namespace(name.clone())
+            .expect("Namespace is already declared");
+        let prev_scope = self.scope.replace(ns);
+
+        let stmts = stmts.into_iter().map(|stmt| self.statement(stmt)).collect();
+
+        self.scope.replace(prev_scope);
+
+        TypedStatement {
+            effects: vec![],
+            stmt: Statement::Namespace { stmts },
         }
     }
 
@@ -221,9 +257,10 @@ impl Checker {
         &self,
         name: &String,
         parameters: &Vec<(String, AstType)>,
-        body: &AstExpression,
+        body: Option<&AstExpression>,
         return_type: &AstType,
         effects: &Vec<Effect>,
+        is_extern: bool,
     ) -> TypedStatement {
         let prev_scope = self
             .scope
@@ -240,20 +277,22 @@ impl Checker {
             .resolve(return_type)
             .expect("Failed to resolve type");
         drop(scope);
-        let body = self.expression(body);
+        let body = body.map(|body| self.expression(body));
 
-        if body.ty != return_type {
-            panic!(
-                "Expected `{name}` to return type `{return_type:?}`, but got: {:?}",
-                body.ty
-            );
-        }
-
-        body.effects.iter().for_each(|effect| {
-            if !effects.contains(effect) {
-                panic!("Missing `{effect}` in function signature.");
+        if let Some(ref body) = body {
+            if body.ty != return_type {
+                panic!(
+                    "Expected `{name}` to return type `{return_type:?}`, but got: {:?}",
+                    body.ty
+                );
             }
-        });
+
+            body.effects.iter().for_each(|effect| {
+                if !effects.contains(effect) {
+                    panic!("Missing `{effect}` in function signature.");
+                }
+            });
+        }
 
         self.scope.replace(prev_scope);
 
@@ -289,6 +328,7 @@ impl Checker {
             return_type: return_type.clone(),
             parameters,
             body,
+            is_extern,
             effects: effects.clone(),
         };
 

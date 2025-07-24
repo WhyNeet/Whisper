@@ -30,6 +30,10 @@ pub enum Type {
     Infer {
         candidate: Box<Type>,
     },
+    Namespace {
+        alias: String,
+        fields: Vec<(String, Type)>,
+    },
 }
 
 impl Type {
@@ -118,6 +122,13 @@ impl Type {
     pub fn as_struct(self) -> Option<(String, Vec<(String, Type)>)> {
         match self {
             Self::Struct { fields, alias } => Some((alias, fields)),
+            _ => None,
+        }
+    }
+
+    pub fn as_namespace(self) -> Option<(String, Vec<(String, Type)>)> {
+        match self {
+            Self::Namespace { fields, alias } => Some((alias, fields)),
             _ => None,
         }
     }

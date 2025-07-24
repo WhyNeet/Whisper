@@ -1,6 +1,6 @@
 pub mod resolver;
 
-use std::{cell::RefCell, iter, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator};
 use tcast::{
@@ -55,7 +55,13 @@ impl TypedAstTransformer {
                 parameters,
                 body,
                 ..
-            } => vec![self.fn_declaration(name, parameters, body)],
+            } => {
+                if let Some(body) = body {
+                    vec![self.fn_declaration(name, parameters, body)]
+                } else {
+                    vec![]
+                }
+            }
             TStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
             }
@@ -93,6 +99,7 @@ impl TypedAstTransformer {
                 }))
                 .collect(),
             TStatement::Annotated { annotations, stmt } => todo!(),
+            TStatement::Namespace { stmts } => vec![],
         }
     }
 

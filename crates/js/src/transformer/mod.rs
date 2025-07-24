@@ -67,11 +67,32 @@ impl TypedAstTransformer {
                             .into_iter()
                             .map(|field| (field.name.clone(), field.ty.clone()))
                             .collect(),
+                        alias: name.clone(),
                     },
                 );
                 vec![self.struct_declaration(name, fields)]
             }
-            TStatement::Impl { ident, methods } => todo!(),
+            TStatement::Impl { ident, methods } => methods
+                .into_iter()
+                .map(|method| {
+                    self.fn_declaration(
+                        &format!("{ident}_{}", method.name),
+                        &method.parameters,
+                        &method.body,
+                    )
+                })
+                .chain(methods.into_iter().map(|method| Statement::Assignment {
+                    target: Expression::MemberAccess {
+                        expr: Box::new(Expression::MemberAccess {
+                            expr: Box::new(Expression::Identifier(ident.clone())),
+                            ident: "prototype".to_string(),
+                        }),
+                        ident: method.name.clone(),
+                    },
+                    expr: Expression::Identifier(format!("{ident}_{}", method.name)),
+                }))
+                .collect(),
+            TStatement::Annotated { annotations, stmt } => todo!(),
         }
     }
 
@@ -85,9 +106,6 @@ impl TypedAstTransformer {
                 },
                 expr: Expression::Identifier(field.name.clone()),
             })
-            .chain(iter::once(Statement::Return(Expression::Identifier(
-                "this".to_string(),
-            ))))
             .collect();
 
         Statement::FunctionDeclaration {
@@ -225,7 +243,9 @@ impl TypedAstTransformer {
                     },
                 )
             }
-            TExpression::Block { return_expr, stmts } => {
+            TExpression::Block {
+                return_expr, stmts, ..
+            } => {
                 let mut tail = stmts
                     .into_iter()
                     .map(|stmt| self.statement(stmt))
@@ -254,9 +274,11 @@ impl TypedAstTransformer {
 
                 let name = self.type_resolver.borrow().resolve(ty).unwrap();
 
-                let expr = Expression::FunctionCall {
-                    expr: Box::new(Expression::Identifier(name)),
-                    args: exprs,
+                let expr = Expression::New {
+                    expr: Box::new(Expression::FunctionCall {
+                        expr: Box::new(Expression::Identifier(name)),
+                        args: exprs,
+                    }),
                 };
 
                 (tail, expr)

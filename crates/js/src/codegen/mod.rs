@@ -116,6 +116,10 @@ impl Codegen {
                 let right = self.expression(right);
                 format!("{left}{operator}{right}")
             }
+            Expression::New { expr } => {
+                let expr = self.expression(expr);
+                format!("new {expr}")
+            }
         }
     }
 }

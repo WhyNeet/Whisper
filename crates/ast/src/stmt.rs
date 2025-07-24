@@ -10,8 +10,9 @@ pub enum Statement {
     FunctionDeclaration {
         name: String,
         return_type: Type,
+        is_extern: bool,
         parameters: Vec<(String, Type)>,
-        body: Expression,
+        body: Option<Expression>,
         effects: Vec<Effect>,
         annotations: Vec<Annotation>,
     },
@@ -27,6 +28,10 @@ pub enum Statement {
     Impl {
         ident: String,
         methods: Vec<StructMethod>,
+    },
+    Namespace {
+        name: String,
+        stmts: Vec<Statement>,
     },
 }
 

@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
                     .expect("Invalid type name");
                 ty
             } else {
-                Type::Unit
+                Type::from("unit")
             };
 
             self.matches(TokenKind::Eq)
@@ -265,7 +265,7 @@ impl<'a> Parser<'a> {
                 .expect("Invalid type name");
             ty
         } else {
-            Type::Unit
+            Type::from("unit")
         };
 
         let body = self
@@ -445,7 +445,7 @@ impl<'a> Parser<'a> {
                     LiteralKind::Bool => {
                         let lexeme = &self.token_stream.source()[token.start..token.end];
                         Literal {
-                            ty: Type::Bool,
+                            ty: Type::from("bool"),
                             value: LiteralValue::Bool(lexeme == "true"),
                         }
                     }
@@ -455,7 +455,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::String,
+                            ty: Type::from("string"),
                             value: LiteralValue::String(
                                 self.token_stream.source()[token.start..token.end].to_string(),
                             ),
@@ -468,7 +468,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::IntN,
+                            ty: Type::InferInt,
                             value: LiteralValue::Integer(
                                 self.token_stream.source()[token.start..token.end]
                                     .parse()
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     LiteralKind::Float { .. } => Literal {
-                        ty: Type::FloatN,
+                        ty: Type::InferFloat,
                         value: LiteralValue::Float(
                             self.token_stream.source()[token.start..token.end]
                                 .parse()
@@ -499,6 +499,20 @@ impl<'a> Parser<'a> {
         } else if let Some(token) = self.matches(TokenKind::Ident) {
             if self.matches_peek(TokenKind::OpenBrace).is_some() {
                 self.struct_init(token, false)
+            } else if self.matches_peek(TokenKind::ColonColon).is_some() {
+                let ident = self.token_stream.source()[token.start..token.end].to_string();
+                let mut expr = Expression::Identifier(ident);
+
+                while self.matches(TokenKind::ColonColon).is_some() {
+                    let token = self.matches(TokenKind::Ident).expect("Expected identifier");
+                    let ident = self.token_stream.source()[token.start..token.end].to_string();
+                    expr = Expression::MethodAccess {
+                        expr: Box::new(expr),
+                        ident,
+                    };
+                }
+
+                expr
             } else {
                 let ident = self.token_stream.source()[token.start..token.end].to_string();
                 Expression::Identifier(ident)

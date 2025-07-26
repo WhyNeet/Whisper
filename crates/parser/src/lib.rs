@@ -132,9 +132,7 @@ impl<'a> Parser<'a> {
 
             let return_type = if self.matches(TokenKind::RArrow).is_some() {
                 let ty = self.matches(TokenKind::Ident).expect("Expected type");
-                let ty = self.token_stream.source()[ty.start..ty.end]
-                    .into();
-                ty
+                self.token_stream.source()[ty.start..ty.end].into()
             } else {
                 Type::from("unit")
             };
@@ -180,8 +178,7 @@ impl<'a> Parser<'a> {
             let ty = self
                 .matches(TokenKind::Ident)
                 .expect("Expected type identifier");
-            let ty = self.token_stream.source()[ty.start..ty.end]
-                .into();
+            let ty = self.token_stream.source()[ty.start..ty.end].into();
 
             self.matches(TokenKind::Semi).expect("Expected semicolon");
 
@@ -258,15 +255,12 @@ impl<'a> Parser<'a> {
 
         let return_type = if self.matches(TokenKind::RArrow).is_some() {
             let ty = self.matches(TokenKind::Ident).expect("Expected type");
-            let ty = self.token_stream.source()[ty.start..ty.end]
-                .into();
-            ty
+            self.token_stream.source()[ty.start..ty.end].into()
         } else {
             Type::from("unit")
         };
 
-        let body = self
-            .matches(TokenKind::Eq).map(|_| self.expression());
+        let body = self.matches(TokenKind::Eq).map(|_| self.expression());
 
         self.matches(TokenKind::Semi);
 
@@ -302,8 +296,7 @@ impl<'a> Parser<'a> {
         self.matches(TokenKind::Colon).expect("Expected colon");
 
         let ty = self.matches(TokenKind::Ident).expect("Expected type");
-        let ty = self.token_stream.source()[ty.start..ty.end]
-            .into();
+        let ty = self.token_stream.source()[ty.start..ty.end].into();
         (identifier, ty)
     }
 

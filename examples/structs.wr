@@ -1,0 +1,26 @@
+fn{io} println(s: string) = {
+  namespace console {
+    extern fn{io} log(args: string);
+  }
+
+  console.log(s);
+}
+
+struct UInt8 {
+  inner: u8;
+}
+
+impl UInt8 {
+  pub fn new(inner: u8) -> UInt8 = UInt8 { inner: inner }
+
+  pub fn to_string(self: UInt8) -> string = {
+    extern fn{io} String(from: u8) -> string;
+
+    String(self.inner)
+  }
+}
+
+@main fn{io} main() = {
+  let my_uint = UInt8::new(15);
+  println("The number is: " + UInt8::to_string(my_uint) + ".");
+}

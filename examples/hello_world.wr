@@ -1,0 +1,9 @@
+fn{io} println(s: string) = {
+  namespace console {
+    extern fn{io} log(args: string);
+  }
+
+  console.log(s);
+}
+
+@main fn{io} main() = println("Hello, world!");

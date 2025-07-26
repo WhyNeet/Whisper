@@ -1,4 +1,4 @@
-name: Run tests on push
+name: Run tests and clippy on push
 
 on:
   push:

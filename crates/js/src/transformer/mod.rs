@@ -102,8 +102,8 @@ impl TypedAstTransformer {
                     expr: Expression::Identifier(format!("{ident}_{}", method.name)),
                 }))
                 .collect(),
-            TStatement::Annotated { annotations, stmt } => todo!(),
-            TStatement::Namespace { stmts } => vec![],
+            TStatement::Annotated { .. } => todo!(),
+            TStatement::Namespace { .. } => vec![],
         }
     }
 

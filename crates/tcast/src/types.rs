@@ -1,8 +1,4 @@
-use std::{
-    mem,
-    rc::Rc,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::mem;
 
 use common::effects::Effect;
 

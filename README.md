@@ -1,3 +1,5 @@
+<img src="resources/Logo.png" alt="Whisper Logo" width="200" />
+
 # Whisper
 [![CI Status](https://github.com/WhyNeet/Whisper/actions/workflows/test.yml/badge.svg)](https://github.com/WhyNeet/Whisper/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

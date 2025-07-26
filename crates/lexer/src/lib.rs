@@ -64,7 +64,6 @@ impl<'a> Cursor<'a> {
 
         let token_kind = match first_char {
             ';' => TokenKind::Semi,
-            ':' => TokenKind::Colon,
             ',' => TokenKind::Comma,
             '.' => TokenKind::Dot,
             '(' => TokenKind::OpenParen,
@@ -76,6 +75,13 @@ impl<'a> Cursor<'a> {
             '@' => TokenKind::At,
             '+' => TokenKind::Plus,
             '!' => TokenKind::Bang,
+            ':' => match self.peek() {
+                Some(':') => {
+                    self.next();
+                    TokenKind::ColonColon
+                }
+                _ => TokenKind::Colon,
+            },
             '-' => match self.peek() {
                 Some('>') => {
                     self.next();

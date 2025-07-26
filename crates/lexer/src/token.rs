@@ -57,6 +57,8 @@ pub enum TokenKind {
     Question,
     /// `:`
     Colon,
+    /// `::`
+    ColonColon,
     /// `$`
     Dollar,
     /// `=`

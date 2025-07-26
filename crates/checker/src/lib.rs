@@ -108,7 +108,7 @@ impl Checker {
         }
     }
 
-    fn namespace_stmt(&self, name: String, stmts: &Vec<AstStatement>) -> TypedStatement {
+    fn namespace_stmt(&self, name: String, stmts: &[AstStatement]) -> TypedStatement {
         let scope = self.scope.borrow();
         let namespace = scope
             .create_namespace(name, Rc::clone(&*scope))
@@ -116,7 +116,7 @@ impl Checker {
         drop(scope);
         let prev_scope = self.scope.replace(namespace);
 
-        let stmts = stmts.into_iter().map(|stmt| self.statement(stmt)).collect();
+        let stmts = stmts.iter().map(|stmt| self.statement(stmt)).collect();
 
         self.scope.replace(prev_scope);
 
@@ -126,9 +126,9 @@ impl Checker {
         }
     }
 
-    fn impl_stmt(&self, ident: &String, methods: &Vec<StructMethod>) -> TypedStatement {
+    fn impl_stmt(&self, ident: &str, methods: &[StructMethod]) -> TypedStatement {
         let methods = methods
-            .into_iter()
+            .iter()
             .map(|method| {
                 let parameters = method
                     .parameters
@@ -177,7 +177,7 @@ impl Checker {
             .collect::<Vec<_>>();
 
         let stmt = Statement::Impl {
-            ident: ident.clone(),
+            ident: ident.to_string(),
             methods: methods.clone(),
         };
 
@@ -191,11 +191,11 @@ impl Checker {
         }
     }
 
-    pub fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> TypedStatement {
+    pub fn struct_declaration(&self, name: &String, fields: &[StructField]) -> TypedStatement {
         let scope = self.scope.borrow();
         let resolver = scope.type_resolver();
         let fields = fields
-            .into_iter()
+            .iter()
             .map(|field| TStructField {
                 name: field.name.clone(),
                 ty: resolver
@@ -259,7 +259,7 @@ impl Checker {
         parameters: &Vec<(String, AstType)>,
         body: Option<&AstExpression>,
         return_type: &AstType,
-        effects: &Vec<Effect>,
+        effects: &[Effect],
         is_extern: bool,
     ) -> TypedStatement {
         let prev_scope = self
@@ -272,7 +272,7 @@ impl Checker {
                 name.clone(),
                 resolver
                     .resolve_ast_type(ty)
-                    .expect(&format!("Failed to resolve type: {ty:?}")),
+                    .unwrap_or_else(|| panic!("Failed to resolve type: {ty:?}")),
             );
         }
         let return_type = resolver
@@ -302,16 +302,16 @@ impl Checker {
         let resolver = scope.type_resolver();
 
         let params = parameters
-            .into_iter()
+            .iter()
             .map(|(_, ty)| {
                 resolver
                     .resolve_ast_type(ty)
-                    .expect(&format!("Failed to resolve type: {ty:?}"))
+                    .unwrap_or_else(|| panic!("Failed to resolve type: {ty:?}"))
             })
             .collect::<Vec<_>>();
 
         let parameters = parameters
-            .into_iter()
+            .iter()
             .zip(params.iter())
             .map(|((name, _), ty)| (name.clone(), ty.clone()))
             .collect();
@@ -319,7 +319,7 @@ impl Checker {
         let fn_type = TcAstType::Fn {
             return_type: Box::new(return_type.clone()),
             params,
-            effects: effects.clone(),
+            effects: effects.to_owned(),
         };
 
         if self.scope.borrow().insert(name.clone(), fn_type) {
@@ -332,11 +332,11 @@ impl Checker {
             parameters,
             body,
             is_extern,
-            effects: effects.clone(),
+            effects: effects.to_owned(),
         };
 
         TypedStatement {
-            effects: effects.clone(),
+            effects: effects.to_owned(),
             stmt,
         }
     }
@@ -353,7 +353,7 @@ impl Checker {
                     .replace_with(|scope| Scope::new(Rc::clone(scope)));
 
                 let stmts = stmts
-                    .into_iter()
+                    .iter()
                     .map(|stmt| self.statement(stmt))
                     .collect::<Vec<_>>();
                 let return_expr = return_expr
@@ -486,7 +486,7 @@ impl Checker {
                             None
                         }
                     })
-                    .expect(&format!("Failed to resolve type: {:?}", literal.ty));
+                    .unwrap_or_else(|| panic!("Failed to resolve type: {:?}", literal.ty));
 
                 TypedExpression {
                     expr: Expression::Literal(Literal {
@@ -503,13 +503,11 @@ impl Checker {
                 let Some(ty) = scope.get(ident).or_else(|| {
                     resolver
                         .resolve_alias(ident)
-                        .map(|ty| resolver.resolve_impl(ty))
-                        .flatten()
+                        .and_then(|ty| resolver.resolve_impl(ty))
                         .map(|impls| {
                             impls
                                 .into_iter()
-                                .map(|i| i.methods)
-                                .flatten()
+                                .flat_map(|i| i.methods)
                                 .map(|method| {
                                     (
                                         method.name,
@@ -548,7 +546,7 @@ impl Checker {
                 };
 
                 let args = args
-                    .into_iter()
+                    .iter()
                     .zip(fn_params.iter())
                     .map(|(arg, ty)| self.expression(arg, Some(ty)))
                     .collect::<Vec<_>>();
@@ -604,7 +602,7 @@ impl Checker {
                     .or_else(|| {
                         if let Some(impls) = impls {
                             impls
-                                .map(|impls| {
+                                .and_then(|impls| {
                                     impls.into_iter().find_map(|i| {
                                         i.methods.into_iter().find(|i| i.name == *ident).map(
                                             |method| {
@@ -624,7 +622,6 @@ impl Checker {
                                         )
                                     })
                                 })
-                                .flatten()
                                 .map(|(_, ty)| ty)
                         } else {
                             scope.get(ident)
@@ -684,7 +681,7 @@ impl Checker {
                 }
 
                 let mut fields = fields
-                    .into_iter()
+                    .iter()
                     .map(|(name, expr)| {
                         (
                             name.clone(),
@@ -720,12 +717,10 @@ impl Checker {
 
                     if field_ty.is_inferred() && expected_ty.can_infer(&field_ty) {
                         field_expr.ty = expected_ty.clone();
-                    } else {
-                        if field_ty != *expected_ty {
-                            panic!(
-                                "Field expected expression of type `{expected_ty:?}`, but found `{field_ty:?}`."
-                            );
-                        }
+                    } else if field_ty != *expected_ty {
+                        panic!(
+                            "Field expected expression of type `{expected_ty:?}`, but found `{field_ty:?}`."
+                        );
                     }
 
                     covered_fields.insert(field_name.clone());
@@ -739,8 +734,7 @@ impl Checker {
 
                 let effects = fields
                     .iter()
-                    .map(|field| field.1.effects.as_slice())
-                    .flatten()
+                    .flat_map(|field| field.1.effects.as_slice())
                     .cloned()
                     .collect();
 

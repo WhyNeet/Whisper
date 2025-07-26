@@ -38,52 +38,41 @@ pub enum Type {
 
 impl Type {
     pub fn is_numeric(&self) -> bool {
-        match self {
+        matches!(
+            self,
             Self::Int8
-            | Self::Int16
-            | Self::Int32
-            | Self::Int64
-            | Self::UInt8
-            | Self::UInt16
-            | Self::UInt32
-            | Self::UInt64
-            | Self::Float32
-            | Self::Float64 => true,
-            _ => false,
-        }
+                | Self::Int16
+                | Self::Int32
+                | Self::Int64
+                | Self::UInt8
+                | Self::UInt16
+                | Self::UInt32
+                | Self::UInt64
+                | Self::Float32
+                | Self::Float64
+        )
     }
 
     pub fn is_int(&self) -> bool {
-        match self {
-            Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64 => true,
-            _ => false,
-        }
+        matches!(self, Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64)
     }
 
     pub fn is_uint(&self) -> bool {
-        match self {
-            Self::UInt8 | Self::UInt16 | Self::UInt32 | Self::UInt64 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::UInt8 | Self::UInt16 | Self::UInt32 | Self::UInt64
+        )
     }
 
     pub fn is_float(&self) -> bool {
-        match self {
-            Self::Float32 | Self::Float64 => true,
-            _ => false,
-        }
+        matches!(self, Self::Float32 | Self::Float64)
     }
 
     pub fn is_signed_numeric(&self) -> bool {
-        match self {
-            Self::Int8
-            | Self::Int16
-            | Self::Int32
-            | Self::Int64
-            | Self::Float32
-            | Self::Float64 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64 | Self::Float32 | Self::Float64
+        )
     }
 
     pub fn is_string(&self) -> bool {

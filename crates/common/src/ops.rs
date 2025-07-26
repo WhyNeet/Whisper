@@ -36,31 +36,25 @@ pub enum BinaryOperator {
 
 impl BinaryOperator {
     pub fn is_bitwise(&self) -> bool {
-        match self {
+        matches!(
+            self,
             BinaryOperator::BitOr
-            | BinaryOperator::BitAnd
-            | BinaryOperator::BitXor
-            | BinaryOperator::Shl
-            | BinaryOperator::Shr => true,
-            _ => false,
-        }
+                | BinaryOperator::BitAnd
+                | BinaryOperator::BitXor
+                | BinaryOperator::Shl
+                | BinaryOperator::Shr
+        )
     }
 
     pub fn is_logic(&self) -> bool {
-        match self {
-            BinaryOperator::Or | BinaryOperator::And => true,
-            _ => false,
-        }
+        matches!(self, BinaryOperator::Or | BinaryOperator::And)
     }
 
     pub fn is_arithmetic(&self) -> bool {
-        match self {
-            BinaryOperator::Add
-            | BinaryOperator::Sub
-            | BinaryOperator::Mul
-            | BinaryOperator::Div => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            BinaryOperator::Add | BinaryOperator::Sub | BinaryOperator::Mul | BinaryOperator::Div
+        )
     }
 }
 

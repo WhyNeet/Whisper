@@ -74,7 +74,7 @@ impl TypedAstTransformer {
                     name.clone(),
                     Type::Struct {
                         fields: fields
-                            .into_iter()
+                            .iter()
                             .map(|field| (field.name.clone(), field.ty.clone()))
                             .collect(),
                         alias: name.clone(),
@@ -83,7 +83,7 @@ impl TypedAstTransformer {
                 vec![self.struct_declaration(name, fields)]
             }
             TStatement::Impl { ident, methods } => methods
-                .into_iter()
+                .iter()
                 .map(|method| {
                     self.fn_declaration(
                         &format!("{ident}_{}", method.name),
@@ -91,7 +91,7 @@ impl TypedAstTransformer {
                         &method.body,
                     )
                 })
-                .chain(methods.into_iter().map(|method| Statement::Assignment {
+                .chain(methods.iter().map(|method| Statement::Assignment {
                     target: Expression::MemberAccess {
                         expr: Box::new(Expression::MemberAccess {
                             expr: Box::new(Expression::Identifier(ident.clone())),
@@ -107,9 +107,9 @@ impl TypedAstTransformer {
         }
     }
 
-    fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> Statement {
+    fn struct_declaration(&self, name: &String, fields: &[StructField]) -> Statement {
         let body = fields
-            .into_iter()
+            .iter()
             .map(|field| Statement::Assignment {
                 target: Expression::MemberAccess {
                     expr: Box::new(Expression::Identifier("this".to_string())),
@@ -122,7 +122,7 @@ impl TypedAstTransformer {
         Statement::FunctionDeclaration {
             is_async: false,
             ident: name.to_string(),
-            params: fields.into_iter().map(|field| field.name.clone()).collect(),
+            params: fields.iter().map(|field| field.name.clone()).collect(),
             body,
         }
     }
@@ -147,7 +147,7 @@ impl TypedAstTransformer {
     fn fn_declaration(
         &self,
         name: &String,
-        parameters: &Vec<(String, Type)>,
+        parameters: &[(String, Type)],
         body: &TypedExpression,
     ) -> Statement {
         let (stmts, ret) = self.expression(body);
@@ -160,7 +160,7 @@ impl TypedAstTransformer {
             is_async: false,
             ident: name.to_string(),
             params: parameters
-                .into_iter()
+                .iter()
                 .map(|(param, _)| param.to_string())
                 .collect(),
             body,
@@ -258,10 +258,10 @@ impl TypedAstTransformer {
             TExpression::FunctionCall { expr, args } => {
                 let (tail, expr) = self.expression(expr);
 
-                let (args_tails, args) = args
-                    .into_iter()
-                    .map(|arg| self.expression(arg))
-                    .collect::<(Vec<Vec<Statement>>, Vec<Expression>)>();
+                let (args_tails, args) =
+                    args.iter()
+                        .map(|arg| self.expression(arg))
+                        .collect::<(Vec<Vec<Statement>>, Vec<Expression>)>();
 
                 (
                     [tail, args_tails.concat()].concat(),
@@ -275,7 +275,7 @@ impl TypedAstTransformer {
                 return_expr, stmts, ..
             } => {
                 let mut tail = stmts
-                    .into_iter()
+                    .iter()
                     .map(|stmt| self.statement(stmt))
                     .collect::<Vec<_>>();
                 let return_expr = return_expr
@@ -292,7 +292,7 @@ impl TypedAstTransformer {
             }
             TExpression::StructInit { ty, fields, .. } => {
                 let (tails, exprs) = fields
-                    .into_iter()
+                    .iter()
                     .map(|(_, expr)| {
                         let (tail, expr) = self.expression(expr);
                         (tail, expr)

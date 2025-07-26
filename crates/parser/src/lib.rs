@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
 
         let mut stmts = vec![];
 
-        while !self.matches(TokenKind::CloseBrace).is_some() {
+        while self.matches(TokenKind::CloseBrace).is_none() {
             stmts.push(self.statement());
         }
 
@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
 
         let mut methods = vec![];
 
-        while !self.matches(TokenKind::CloseBrace).is_some() {
+        while self.matches(TokenKind::CloseBrace).is_none() {
             let is_pub = self.matches(TokenKind::Keyword(Keyword::Pub)).is_some();
 
             self.matches(TokenKind::Keyword(Keyword::Fn))
@@ -133,8 +133,7 @@ impl<'a> Parser<'a> {
             let return_type = if self.matches(TokenKind::RArrow).is_some() {
                 let ty = self.matches(TokenKind::Ident).expect("Expected type");
                 let ty = self.token_stream.source()[ty.start..ty.end]
-                    .try_into()
-                    .expect("Invalid type name");
+                    .into();
                 ty
             } else {
                 Type::from("unit")
@@ -170,7 +169,7 @@ impl<'a> Parser<'a> {
 
         let mut fields = vec![];
 
-        while !self.matches(TokenKind::CloseBrace).is_some() {
+        while self.matches(TokenKind::CloseBrace).is_none() {
             let is_pub = self.matches(TokenKind::Keyword(Keyword::Pub)).is_some();
 
             let name = self.matches(TokenKind::Ident).expect("Expected identifier");
@@ -182,8 +181,7 @@ impl<'a> Parser<'a> {
                 .matches(TokenKind::Ident)
                 .expect("Expected type identifier");
             let ty = self.token_stream.source()[ty.start..ty.end]
-                .try_into()
-                .unwrap();
+                .into();
 
             self.matches(TokenKind::Semi).expect("Expected semicolon");
 
@@ -219,7 +217,7 @@ impl<'a> Parser<'a> {
         if self.matches(TokenKind::OpenBrace).is_some() {
             let mut effects = vec![];
 
-            if !self.matches(TokenKind::CloseBrace).is_some() {
+            if self.matches(TokenKind::CloseBrace).is_none() {
                 let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
                 let effect = self.token_stream.source()[ident.start..ident.end]
                     .try_into()
@@ -261,16 +259,14 @@ impl<'a> Parser<'a> {
         let return_type = if self.matches(TokenKind::RArrow).is_some() {
             let ty = self.matches(TokenKind::Ident).expect("Expected type");
             let ty = self.token_stream.source()[ty.start..ty.end]
-                .try_into()
-                .expect("Invalid type name");
+                .into();
             ty
         } else {
             Type::from("unit")
         };
 
         let body = self
-            .matches(TokenKind::Eq)
-            .and_then(|_| Some(self.expression()));
+            .matches(TokenKind::Eq).map(|_| self.expression());
 
         self.matches(TokenKind::Semi);
 
@@ -307,8 +303,7 @@ impl<'a> Parser<'a> {
 
         let ty = self.matches(TokenKind::Ident).expect("Expected type");
         let ty = self.token_stream.source()[ty.start..ty.end]
-            .try_into()
-            .expect("Invalid type name");
+            .into();
         (identifier, ty)
     }
 
@@ -395,7 +390,7 @@ impl<'a> Parser<'a> {
         if self.matches(TokenKind::OpenParen).is_some() {
             let mut args = vec![];
 
-            if !self.matches(TokenKind::CloseParen).is_some() {
+            if self.matches(TokenKind::CloseParen).is_none() {
                 let arg = self.expression();
                 args.push(arg);
 
@@ -526,15 +521,15 @@ impl<'a> Parser<'a> {
 
         let mut fields = vec![];
 
-        if !self.matches(TokenKind::CloseBrace).is_some() {
-            while !self.matches(TokenKind::CloseBrace).is_some() {
+        if self.matches(TokenKind::CloseBrace).is_none() {
+            while self.matches(TokenKind::CloseBrace).is_none() {
                 let name = self.matches(TokenKind::Ident).expect("Expected field name");
                 let name = self.token_stream.source()[name.start..name.end].to_string();
                 self.matches(TokenKind::Colon).expect("Expected colon");
                 let expr = self.expression();
 
-                if !self.matches(TokenKind::Comma).is_some()
-                    && !self.matches_peek(TokenKind::CloseBrace).is_some()
+                if self.matches(TokenKind::Comma).is_none()
+                    && self.matches_peek(TokenKind::CloseBrace).is_none()
                 {
                     panic!("Expected comma.")
                 }
@@ -559,7 +554,7 @@ impl<'a> Parser<'a> {
 
     fn block(&mut self) -> Expression {
         let mut stmts = vec![];
-        while !self.matches(TokenKind::CloseBrace).is_some() {
+        while self.matches(TokenKind::CloseBrace).is_none() {
             match self.token_stream.peek().unwrap().kind {
                 TokenKind::LineComment => {
                     self.token_stream.next();
@@ -611,7 +606,7 @@ impl<'a> Parser<'a> {
     }
 }
 
-impl<'a> Parser<'a> {
+impl Parser<'_> {
     fn matches(&mut self, kind: TokenKind) -> Option<Token> {
         if let Some(token) = self.token_stream.peek() {
             if token.kind == kind {
@@ -625,15 +620,7 @@ impl<'a> Parser<'a> {
     }
 
     fn matches_peek(&mut self, kind: TokenKind) -> Option<&Token> {
-        if let Some(token) = self.token_stream.peek() {
-            if token.kind == kind {
-                Some(token)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        self.token_stream.peek().filter(|&token| token.kind == kind)
     }
 
     fn matches_kind(&mut self, kind: TokenKind) -> Option<Token> {

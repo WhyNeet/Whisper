@@ -14,14 +14,12 @@ pub struct Scope {
 
 impl Scope {
     pub fn new(enclosing: Rc<Scope>) -> Rc<Self> {
-        let scope = Rc::new(Self {
+        Rc::new(Self {
             enclosing: Some(Rc::clone(&enclosing)),
             resolver: Rc::new(TypeResolver::new(Rc::clone(&enclosing.resolver))),
             namespaces: Default::default(),
             values: Default::default(),
-        });
-
-        scope
+        })
     }
 
     pub fn root() -> Self {

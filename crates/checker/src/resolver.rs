@@ -68,8 +68,7 @@ impl TypeResolver {
         self.impls.borrow().get(&ty).cloned().or_else(|| {
             self.enclosing
                 .as_ref()
-                .map(|r| r.resolve_impl(ty))
-                .flatten()
+                .and_then(|r| r.resolve_impl(ty))
         })
     }
 
@@ -77,8 +76,7 @@ impl TypeResolver {
         self.alias_mapping.borrow().get(alias).cloned().or_else(|| {
             self.enclosing
                 .as_ref()
-                .map(|r| r.resolve_alias(alias))
-                .flatten()
+                .and_then(|r| r.resolve_alias(alias))
         })
     }
 

@@ -19,7 +19,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    pub fn next(&mut self) -> Option<char> {
+    pub fn bump(&mut self) -> Option<char> {
         self.consumed += 1;
         self.chars.next()
     }

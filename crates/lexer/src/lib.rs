@@ -8,7 +8,7 @@ pub mod stream;
 pub mod token;
 
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
-    let mut cursor = Cursor::new(&input);
+    let mut cursor = Cursor::new(input);
     std::iter::from_fn(move || {
         let token = cursor.next_token();
         if token.kind != TokenKind::Eof {
@@ -48,10 +48,10 @@ pub fn is_whitespace(c: char) -> bool {
     )
 }
 
-impl<'a> Cursor<'a> {
+impl Cursor<'_> {
     pub fn next_token(&mut self) -> Token {
         let start = self.consumed();
-        let first_char = match self.next() {
+        let first_char = match self.bump() {
             Some(c) => c,
             None => {
                 return Token {
@@ -77,14 +77,14 @@ impl<'a> Cursor<'a> {
             '!' => TokenKind::Bang,
             ':' => match self.peek() {
                 Some(':') => {
-                    self.next();
+                    self.bump();
                     TokenKind::ColonColon
                 }
                 _ => TokenKind::Colon,
             },
             '-' => match self.peek() {
                 Some('>') => {
-                    self.next();
+                    self.bump();
                     TokenKind::RArrow
                 }
                 _ => TokenKind::Minus,
@@ -92,29 +92,29 @@ impl<'a> Cursor<'a> {
             '*' => TokenKind::Star,
             '/' => match self.peek() {
                 Some('/') => {
-                    self.next();
-                    while self.next() != Some('\n') {}
+                    self.bump();
+                    while self.bump() != Some('\n') {}
                     TokenKind::LineComment
                 }
                 _ => TokenKind::Slash,
             },
             '=' => match self.peek() {
                 Some('=') => {
-                    self.next();
+                    self.bump();
                     TokenKind::EqEq
                 }
                 _ => TokenKind::Eq,
             },
             '&' => match self.peek() {
                 Some('&') => {
-                    self.next();
+                    self.bump();
                     TokenKind::AndAnd
                 }
                 _ => TokenKind::And,
             },
             '|' => match self.peek() {
                 Some('|') => {
-                    self.next();
+                    self.bump();
                     TokenKind::OrOr
                 }
                 _ => TokenKind::Or,
@@ -132,7 +132,7 @@ impl<'a> Cursor<'a> {
                     if self.peek().unwrap() == '.' {
                         is_float = true;
                     }
-                    self.next();
+                    self.bump();
                 }
                 TokenKind::Literal {
                     kind: if is_float {
@@ -150,10 +150,10 @@ impl<'a> Cursor<'a> {
             }
             '"' => {
                 while !self.is_eof() && self.peek().map(|c| c != '"').unwrap_or(true) {
-                    self.next();
+                    self.bump();
                 }
 
-                self.next();
+                self.bump();
 
                 TokenKind::Literal {
                     kind: LiteralKind::Str { terminated: true },
@@ -167,7 +167,7 @@ impl<'a> Cursor<'a> {
                         .map(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_')
                         .unwrap_or(false)
                 {
-                    if let Some(c) = self.next() {
+                    if let Some(c) = self.bump() {
                         s.push(c);
                     }
                 }

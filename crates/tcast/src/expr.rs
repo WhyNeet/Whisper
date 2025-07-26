@@ -44,6 +44,10 @@ pub enum Expression {
         ty: Type,
         fields: Vec<(String, TypedExpression)>,
     },
+    MethodAccess {
+        ty: Type,
+        ident: String,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -1,4 +1,8 @@
-use std::mem;
+use std::{
+    mem,
+    rc::Rc,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use common::effects::Effect;
 
@@ -151,3 +155,17 @@ impl Type {
         }
     }
 }
+
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// pub struct TypeId(u64);
+
+// static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+// impl TypeId {
+//     pub fn sequential() -> Self {
+//         let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
+//         Self(counter)
+//     }
+// }
+
+// pub const UNIT_TYPE_ID: TypeId = TypeId(13);

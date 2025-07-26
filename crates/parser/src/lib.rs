@@ -272,9 +272,7 @@ impl<'a> Parser<'a> {
             .matches(TokenKind::Eq)
             .and_then(|_| Some(self.expression()));
 
-        if body.is_none() {
-            self.matches(TokenKind::Semi);
-        }
+        self.matches(TokenKind::Semi);
 
         Statement::FunctionDeclaration {
             name,

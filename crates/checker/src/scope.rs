@@ -4,7 +4,7 @@ use tcast::types::Type;
 
 use crate::resolver::TypeResolver;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Scope {
     enclosing: Option<Rc<Scope>>,
     values: RefCell<HashMap<String, Type>>,
@@ -17,10 +17,20 @@ impl Scope {
         let scope = Rc::new(Self {
             enclosing: Some(Rc::clone(&enclosing)),
             resolver: Rc::new(TypeResolver::new(Rc::clone(&enclosing.resolver))),
-            ..Default::default()
+            namespaces: Default::default(),
+            values: Default::default(),
         });
 
         scope
+    }
+
+    pub fn root() -> Self {
+        Self {
+            resolver: Rc::new(TypeResolver::root()),
+            namespaces: Default::default(),
+            values: Default::default(),
+            enclosing: None,
+        }
     }
 
     pub fn insert(&self, ident: String, ty: Type) -> bool {
@@ -54,8 +64,8 @@ impl Scope {
             })
     }
 
-    pub fn create_namespace(&self, name: String) -> Option<Rc<Scope>> {
-        let scope = Rc::new(Scope::default());
+    pub fn create_namespace(&self, name: String, scope: Rc<Scope>) -> Option<Rc<Scope>> {
+        let scope = Scope::new(scope);
 
         if self
             .namespaces

@@ -20,7 +20,7 @@ use tcast::{
 
 use crate::scope::Scope;
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
     main_fn: RefCell<Option<String>>,
@@ -29,6 +29,7 @@ pub struct Checker {
 impl Checker {
     pub fn new() -> Self {
         Self {
+            scope: RefCell::new(Rc::new(Scope::root())),
             ..Default::default()
         }
     }
@@ -56,7 +57,7 @@ impl Checker {
     pub fn statement(&self, stmt: &AstStatement) -> TypedStatement {
         match stmt {
             AstStatement::Expression { expr, .. } => {
-                let expr = self.expression(expr);
+                let expr = self.expression(expr, None);
 
                 TypedStatement {
                     effects: expr.effects.clone(),
@@ -108,11 +109,11 @@ impl Checker {
     }
 
     fn namespace_stmt(&self, name: String, stmts: &Vec<AstStatement>) -> TypedStatement {
-        let namespace = self
-            .scope
-            .borrow()
-            .create_namespace(name)
+        let scope = self.scope.borrow();
+        let namespace = scope
+            .create_namespace(name, Rc::clone(&*scope))
             .expect("Namespace is already declared");
+        drop(scope);
         let prev_scope = self.scope.replace(namespace);
 
         let stmts = stmts.into_iter().map(|stmt| self.statement(stmt)).collect();
@@ -138,11 +139,12 @@ impl Checker {
                             self.scope
                                 .borrow()
                                 .type_resolver()
-                                .resolve(ty)
+                                .resolve_ast_type(ty)
                                 .expect("Failed to resolve type"),
                         )
                     })
                     .collect::<Vec<_>>();
+
                 TStructMethod {
                     name: method.name.clone(),
                     annotations: method.annotations.clone(),
@@ -155,7 +157,7 @@ impl Checker {
                             scope.insert(name.clone(), ty.clone());
                         }
                         drop(scope);
-                        let expr = self.expression(&method.body);
+                        let expr = self.expression(&method.body, None);
 
                         self.scope.replace(prev_scope);
 
@@ -168,7 +170,7 @@ impl Checker {
                         .scope
                         .borrow()
                         .type_resolver()
-                        .resolve(&method.return_type)
+                        .resolve_ast_type(&method.return_type)
                         .expect("Failed to resolve type"),
                 }
             })
@@ -179,10 +181,9 @@ impl Checker {
             methods: methods.clone(),
         };
 
-        self.scope
-            .borrow()
-            .type_resolver()
-            .add_impl(ident.clone(), methods);
+        let scope = self.scope.borrow();
+        let resolver = scope.type_resolver();
+        resolver.add_impl(resolver.resolve_alias(ident).unwrap(), methods);
 
         TypedStatement {
             effects: vec![],
@@ -191,16 +192,15 @@ impl Checker {
     }
 
     pub fn struct_declaration(&self, name: &String, fields: &Vec<StructField>) -> TypedStatement {
+        let scope = self.scope.borrow();
+        let resolver = scope.type_resolver();
         let fields = fields
             .into_iter()
             .map(|field| TStructField {
                 name: field.name.clone(),
-                ty: self
-                    .scope
-                    .borrow()
-                    .type_resolver()
-                    .resolve(&field.ty)
-                    .expect("Cannot resolve type"),
+                ty: resolver
+                    .resolve_ast_type(&field.ty)
+                    .expect("Failed to resolve type"),
                 is_pub: field.is_pub,
             })
             .collect::<Vec<_>>();
@@ -233,7 +233,7 @@ impl Checker {
         expr: &AstExpression,
         is_mut: bool,
     ) -> TypedStatement {
-        let expr = self.expression(expr);
+        let expr = self.expression(expr, None);
 
         self.scope
             .borrow()
@@ -266,18 +266,20 @@ impl Checker {
             .scope
             .replace_with(|scope| Scope::new(Rc::clone(scope)));
         let scope = self.scope.borrow();
-        let resolver = scope.type_resolver();
+        let resolver = prev_scope.type_resolver();
         for (name, ty) in parameters {
             scope.insert(
                 name.clone(),
-                resolver.resolve(ty).expect("Failed to resolve type"),
+                resolver
+                    .resolve_ast_type(ty)
+                    .expect(&format!("Failed to resolve type: {ty:?}")),
             );
         }
         let return_type = resolver
-            .resolve(return_type)
+            .resolve_ast_type(return_type)
             .expect("Failed to resolve type");
         drop(scope);
-        let body = body.map(|body| self.expression(body));
+        let body = body.map(|body| self.expression(body, None));
 
         if let Some(ref body) = body {
             if body.ty != return_type {
@@ -296,14 +298,15 @@ impl Checker {
 
         self.scope.replace(prev_scope);
 
+        let scope = self.scope.borrow();
+        let resolver = scope.type_resolver();
+
         let params = parameters
             .into_iter()
             .map(|(_, ty)| {
-                self.scope
-                    .borrow()
-                    .type_resolver()
-                    .resolve(ty)
-                    .expect("Failed to resolve type")
+                resolver
+                    .resolve_ast_type(ty)
+                    .expect(&format!("Failed to resolve type: {ty:?}"))
             })
             .collect::<Vec<_>>();
 
@@ -325,7 +328,7 @@ impl Checker {
 
         let stmt = Statement::FunctionDeclaration {
             name: name.clone(),
-            return_type: return_type.clone(),
+            return_type,
             parameters,
             body,
             is_extern,
@@ -338,7 +341,11 @@ impl Checker {
         }
     }
 
-    pub fn expression(&self, expr: &AstExpression) -> TypedExpression {
+    pub fn expression(
+        &self,
+        expr: &AstExpression,
+        expect_ty: Option<&TcAstType>,
+    ) -> TypedExpression {
         match expr {
             AstExpression::Block { stmts, return_expr } => {
                 let prev_scope = self
@@ -351,7 +358,7 @@ impl Checker {
                     .collect::<Vec<_>>();
                 let return_expr = return_expr
                     .as_ref()
-                    .map(|expr| self.expression(expr.as_ref()))
+                    .map(|expr| self.expression(expr.as_ref(), None))
                     .map(Box::new);
                 let return_type = return_expr
                     .as_ref()
@@ -385,13 +392,21 @@ impl Checker {
                 left,
                 right,
             } => {
-                let left = self.expression(left);
-                let right = self.expression(right);
+                let left = self.expression(left, None);
+                let right = self.expression(right, None);
 
                 let effects = [left.effects.as_slice(), right.effects.as_slice()].concat();
 
-                let left_ty = left.ty.clone();
-                let right_ty = right.ty.clone();
+                let operator: TypedBinaryOperator = (*operator).into();
+
+                if !operator.accepts_type(&left.ty, &right.ty) {
+                    panic!(
+                        "{} cannot be used on types `{:?}` and `{:?}`",
+                        *operator, left.ty, right.ty
+                    );
+                }
+
+                let result_ty = operator.result_type(&left.ty, &right.ty);
 
                 let expr = Expression::Binary {
                     operator: *operator,
@@ -399,23 +414,14 @@ impl Checker {
                     right: Box::new(right),
                 };
 
-                let operator: TypedBinaryOperator = (*operator).into();
-
-                if !operator.accepts_type(&left_ty, &right_ty) {
-                    panic!(
-                        "{} cannot be used on types `{:?}` and `{:?}`",
-                        *operator, left_ty, right_ty
-                    );
-                }
-
                 TypedExpression {
                     effects,
                     expr,
-                    ty: operator.result_type(&left_ty, &right_ty),
+                    ty: result_ty,
                 }
             }
             AstExpression::Unary { operator, expr } => {
-                let expr = self.expression(expr);
+                let expr = self.expression(expr, None);
 
                 let effects = expr.effects.clone();
 
@@ -439,7 +445,7 @@ impl Checker {
                 }
             }
             AstExpression::Grouping(expr) => {
-                let expr = self.expression(expr);
+                let expr = self.expression(expr, expect_ty);
                 let expr_ty = expr.ty.clone();
                 let effects = expr.effects.clone();
 
@@ -456,8 +462,31 @@ impl Checker {
                     .scope
                     .borrow()
                     .type_resolver()
-                    .resolve(&literal.ty)
-                    .expect("Failed to resolve type");
+                    .resolve_ast_type(&literal.ty)
+                    .or_else(|| {
+                        if let Some(ty) = expect_ty {
+                            match literal.ty {
+                                AstType::Alias(_) => None,
+                                AstType::InferFloat => {
+                                    if ty.is_float() {
+                                        Some(ty.clone())
+                                    } else {
+                                        None
+                                    }
+                                }
+                                AstType::InferInt => {
+                                    if ty.is_int() || ty.is_uint() {
+                                        Some(ty.clone())
+                                    } else {
+                                        None
+                                    }
+                                }
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                    .expect(&format!("Failed to resolve type: {:?}", literal.ty));
 
                 TypedExpression {
                     expr: Expression::Literal(Literal {
@@ -469,8 +498,40 @@ impl Checker {
                 }
             }
             AstExpression::Identifier(ident) => {
-                let Some(ty) = self.scope.borrow().get(ident) else {
-                    panic!("`{ident}` is not present in current scope.");
+                let scope = self.scope.borrow();
+                let resolver = scope.type_resolver();
+                let Some(ty) = scope.get(ident).or_else(|| {
+                    resolver
+                        .resolve_alias(ident)
+                        .map(|ty| resolver.resolve_impl(ty))
+                        .flatten()
+                        .map(|impls| {
+                            impls
+                                .into_iter()
+                                .map(|i| i.methods)
+                                .flatten()
+                                .map(|method| {
+                                    (
+                                        method.name,
+                                        TcAstType::Fn {
+                                            return_type: Box::new(method.return_type),
+                                            params: method
+                                                .parameters
+                                                .into_iter()
+                                                .map(|(_, ty)| ty)
+                                                .collect(),
+                                            effects: method.effects,
+                                        },
+                                    )
+                                })
+                                .collect()
+                        })
+                        .map(|methods| TcAstType::Struct {
+                            alias: ident.clone(),
+                            fields: methods,
+                        })
+                }) else {
+                    panic!("`{ident}` is not present in current scope.")
                 };
 
                 TypedExpression {
@@ -480,7 +541,7 @@ impl Checker {
                 }
             }
             AstExpression::FunctionCall { expr, args } => {
-                let expr = self.expression(expr);
+                let expr = self.expression(expr, None);
 
                 let Some((fn_return_type, fn_params, fn_effects)) = expr.ty.clone().as_fn() else {
                     panic!("`{expr:?}` is not callable.")
@@ -488,7 +549,8 @@ impl Checker {
 
                 let args = args
                     .into_iter()
-                    .map(|arg| self.expression(arg))
+                    .zip(fn_params.iter())
+                    .map(|(arg, ty)| self.expression(arg, Some(ty)))
                     .collect::<Vec<_>>();
                 if args.len() != fn_params.len() {
                     panic!(
@@ -499,7 +561,7 @@ impl Checker {
                 }
 
                 for i in 0..args.len() {
-                    if args[i].ty != fn_params[i] {
+                    if args[i].ty != fn_params[i] && !fn_params[i].can_infer(&args[i].ty) {
                         panic!(
                             "Invalid argument type at position {i}: expected `{:?}`, found `{:?}`",
                             fn_params[i], args[i].ty
@@ -519,7 +581,7 @@ impl Checker {
                 }
             }
             AstExpression::MemberAccess { expr, ident } => {
-                let expr = self.expression(expr);
+                let expr = self.expression(expr, None);
                 let Some((alias, fields)) = expr
                     .ty
                     .clone()
@@ -529,30 +591,44 @@ impl Checker {
                     panic!("Expression does not contain member `{ident}`");
                 };
 
-                let impls = self.scope.borrow().type_resolver().resolve_impl(&alias);
+                let scope = self.scope.borrow();
+                let resolver = scope.type_resolver();
+                let impls = resolver
+                    .resolve_alias(&alias)
+                    .map(|ty| resolver.resolve_impl(ty));
 
-                let Some((_, field_ty)) = fields
+                let Some(field_ty) = fields
                     .into_iter()
                     .find(|(name, _)| name == ident)
+                    .map(|(_, ty)| ty)
                     .or_else(|| {
-                        impls
-                            .map(|impls| {
-                                impls.into_iter().find(|i| i.name == *ident).map(|method| {
-                                    (
-                                        method.name,
-                                        TcAstType::Fn {
-                                            return_type: Box::new(method.return_type),
-                                            params: method
-                                                .parameters
-                                                .into_iter()
-                                                .map(|(_, ty)| ty)
-                                                .collect(),
-                                            effects: method.effects,
-                                        },
-                                    )
+                        if let Some(impls) = impls {
+                            impls
+                                .map(|impls| {
+                                    impls.into_iter().find_map(|i| {
+                                        i.methods.into_iter().find(|i| i.name == *ident).map(
+                                            |method| {
+                                                (
+                                                    method.name,
+                                                    TcAstType::Fn {
+                                                        return_type: Box::new(method.return_type),
+                                                        params: method
+                                                            .parameters
+                                                            .into_iter()
+                                                            .map(|(_, ty)| ty)
+                                                            .collect(),
+                                                        effects: method.effects,
+                                                    },
+                                                )
+                                            },
+                                        )
+                                    })
                                 })
-                            })
-                            .flatten()
+                                .flatten()
+                                .map(|(_, ty)| ty)
+                        } else {
+                            scope.get(ident)
+                        }
                     })
                 else {
                     panic!("Expression does not contain member `{ident}`");
@@ -569,15 +645,34 @@ impl Checker {
                     expr,
                 }
             }
+            AstExpression::MethodAccess { expr, ident } => {
+                let expr = self.expression(expr, None);
+
+                let (_, ty) = expr
+                    .ty
+                    .clone()
+                    .as_struct()
+                    .expect("Not a struct")
+                    .1
+                    .into_iter()
+                    .find(|(name, _)| name == ident)
+                    .expect("Field is not present in struct");
+
+                TypedExpression {
+                    ty,
+                    effects: vec![],
+                    expr: Expression::MethodAccess {
+                        ty: expr.ty,
+                        ident: ident.clone(),
+                    },
+                }
+            }
             AstExpression::StructInit {
                 use_default,
                 ty,
                 fields,
             } => {
-                let Some(ty) = self.scope.borrow().type_resolver().resolve_alias(match ty {
-                    AstType::Custom(val) => val,
-                    _ => todo!(),
-                }) else {
+                let Some(ty) = self.scope.borrow().type_resolver().resolve_ast_type(ty) else {
                     panic!("Struct `{ty:?}` is not present in current scope.");
                 };
                 let Some((_, struct_fields)) = ty.clone().as_struct() else {
@@ -590,7 +685,21 @@ impl Checker {
 
                 let mut fields = fields
                     .into_iter()
-                    .map(|(name, expr)| (name.clone(), self.expression(expr)))
+                    .map(|(name, expr)| {
+                        (
+                            name.clone(),
+                            self.expression(
+                                expr,
+                                Some(
+                                    struct_fields
+                                        .iter()
+                                        .find(|(ident, _)| ident == name)
+                                        .map(|(_, ty)| ty)
+                                        .unwrap(),
+                                ),
+                            ),
+                        )
+                    })
                     .collect::<Vec<_>>();
 
                 let mut covered_fields = HashSet::new();

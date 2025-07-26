@@ -103,6 +103,10 @@ impl Codegen {
                 let expr = self.expression(expr);
                 format!("{expr}.{ident}")
             }
+            Expression::MethodAccess { expr, ident } => {
+                let expr = self.expression(expr);
+                format!("{expr}.prototype.{ident}")
+            }
             Expression::Unary { operator, expr } => {
                 let expr = self.expression(expr);
                 format!("{operator}{expr}")

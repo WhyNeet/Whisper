@@ -27,4 +27,8 @@ pub enum Expression {
         expr: Box<Expression>,
         ident: String,
     },
+    MethodAccess {
+        expr: Box<Expression>,
+        ident: String,
+    },
 }

@@ -31,7 +31,7 @@ impl TypedAstTransformer {
         let mut stmts = vec![];
 
         for stmt in module.stmts.iter() {
-            stmts.append(&mut self.statement(stmt))
+            stmts.append(&mut self.statement(stmt));
         }
 
         stmts.push(Statement::Expression(Expression::FunctionCall {
@@ -45,6 +45,10 @@ impl TypedAstTransformer {
     fn statement(&self, stmt: &TypedStatement) -> Vec<Statement> {
         match &stmt.stmt {
             TStatement::Expression(expr) => {
+                if stmt.effects.is_empty() {
+                    return vec![];
+                }
+
                 let (mut tail, expr) = self.expression(expr);
                 tail.push(Statement::Expression(expr));
 
@@ -231,6 +235,23 @@ impl TypedAstTransformer {
                     Expression::MemberAccess {
                         expr: Box::new(expr),
                         ident: ident.to_string(),
+                    },
+                )
+            }
+            TExpression::MethodAccess {
+                ty,
+                ident: method_ident,
+            } => {
+                let ident = match ty {
+                    Type::Struct { alias, .. } => alias,
+                    _ => panic!(),
+                };
+
+                (
+                    vec![],
+                    Expression::MethodAccess {
+                        expr: Box::new(Expression::Identifier(ident.clone())),
+                        ident: method_ident.clone(),
                     },
                 )
             }

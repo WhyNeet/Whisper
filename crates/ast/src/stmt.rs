@@ -20,6 +20,7 @@ pub enum Statement {
         name: String,
         is_mut: bool,
         expr: Expression,
+        ty: Option<Type>,
     },
     StructDeclaration {
         name: String,

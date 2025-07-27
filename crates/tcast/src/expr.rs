@@ -1,16 +1,19 @@
+use std::rc::Rc;
+
 use common::{
     effects::Effect,
     literal::LiteralValue,
     ops::{BinaryOperator, UnaryOperator},
 };
 
-use crate::{stmt::TypedStatement, types::Type};
+use crate::{namespace::Namespace, stmt::TypedStatement, types::Type};
 
 #[derive(Debug, Clone)]
 pub struct TypedExpression {
     pub effects: Vec<Effect>,
     pub ty: Type,
     pub expr: Expression,
+    pub is_mut: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +50,14 @@ pub enum Expression {
     MethodAccess {
         ty: Type,
         ident: String,
+    },
+    Assignment {
+        assignee: Box<TypedExpression>,
+        expr: Box<TypedExpression>,
+    },
+    Namespace {
+        alias: String,
+        namespace: Rc<Namespace>,
     },
 }
 

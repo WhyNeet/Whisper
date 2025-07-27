@@ -20,12 +20,12 @@ pub enum Type {
         alias: String,
         fields: Vec<(String, Type)>,
     },
-    Infer {
-        candidate: Box<Type>,
-    },
     Namespace {
         alias: String,
         fields: Vec<(String, Type)>,
+    },
+    Infer {
+        candidate: Box<Type>,
     },
 }
 

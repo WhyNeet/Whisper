@@ -34,6 +34,10 @@ impl Type {
         matches!(self, Self::Int | Self::UInt | Self::Float)
     }
 
+    pub fn is_whole(&self) -> bool {
+        matches!(self, Self::Int | Self::UInt)
+    }
+
     pub fn is_int(&self) -> bool {
         matches!(self, Self::Int)
     }

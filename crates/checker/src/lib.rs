@@ -458,11 +458,21 @@ impl Checker {
                 }
             }
             AstExpression::Literal(literal) => {
-                let ty = self
-                    .scope
-                    .borrow()
-                    .type_resolver()
-                    .resolve_ast_type(&literal.ty)
+                let ty = expect_ty
+                    .map(|ty| {
+                        if ty.is_whole() && literal.ty.is_whole() {
+                            Some(ty.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten()
+                    .or_else(|| {
+                        self.scope
+                            .borrow()
+                            .type_resolver()
+                            .resolve_ast_type(&literal.ty)
+                    })
                     .unwrap_or_else(|| panic!("Failed to resolve type: {:?}", literal.ty));
 
                 TypedExpression {

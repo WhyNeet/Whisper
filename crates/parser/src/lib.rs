@@ -322,7 +322,21 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> Expression {
-        self.term()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Expression {
+        let mut expr = self.term();
+
+        if self.matches(TokenKind::Eq).is_some() {
+            let assigned_expr = self.expression();
+            expr = Expression::Assignment {
+                assignee: Box::new(expr),
+                expr: Box::new(assigned_expr),
+            };
+        }
+
+        expr
     }
 
     fn term(&mut self) -> Expression {

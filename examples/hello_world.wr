@@ -1,6 +1,6 @@
-fn{io} println(s: string) = {
+fn{io} println(s: String) = {
   namespace console {
-    extern fn{io} log(args: string);
+    extern fn{io} log(args: String);
   }
 
   console.log(s);

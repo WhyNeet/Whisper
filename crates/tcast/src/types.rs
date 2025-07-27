@@ -4,16 +4,9 @@ use common::effects::Effect;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum Type {
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    UInt8,
-    UInt16,
-    UInt32,
-    UInt64,
-    Float32,
-    Float64,
+    Int,
+    UInt,
+    Float,
     String,
     Bool,
     Char,
@@ -38,41 +31,23 @@ pub enum Type {
 
 impl Type {
     pub fn is_numeric(&self) -> bool {
-        matches!(
-            self,
-            Self::Int8
-                | Self::Int16
-                | Self::Int32
-                | Self::Int64
-                | Self::UInt8
-                | Self::UInt16
-                | Self::UInt32
-                | Self::UInt64
-                | Self::Float32
-                | Self::Float64
-        )
+        matches!(self, Self::Int | Self::UInt | Self::Float)
     }
 
     pub fn is_int(&self) -> bool {
-        matches!(self, Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64)
+        matches!(self, Self::Int)
     }
 
     pub fn is_uint(&self) -> bool {
-        matches!(
-            self,
-            Self::UInt8 | Self::UInt16 | Self::UInt32 | Self::UInt64
-        )
+        matches!(self, Self::UInt)
     }
 
     pub fn is_float(&self) -> bool {
-        matches!(self, Self::Float32 | Self::Float64)
+        matches!(self, Self::Float)
     }
 
     pub fn is_signed_numeric(&self) -> bool {
-        matches!(
-            self,
-            Self::Int8 | Self::Int16 | Self::Int32 | Self::Int64 | Self::Float32 | Self::Float64
-        )
+        matches!(self, Self::Int | Self::Float)
     }
 
     pub fn is_string(&self) -> bool {

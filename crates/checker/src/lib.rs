@@ -463,29 +463,6 @@ impl Checker {
                     .borrow()
                     .type_resolver()
                     .resolve_ast_type(&literal.ty)
-                    .or_else(|| {
-                        if let Some(ty) = expect_ty {
-                            match literal.ty {
-                                AstType::Alias(_) => None,
-                                AstType::InferFloat => {
-                                    if ty.is_float() {
-                                        Some(ty.clone())
-                                    } else {
-                                        None
-                                    }
-                                }
-                                AstType::InferInt => {
-                                    if ty.is_int() || ty.is_uint() {
-                                        Some(ty.clone())
-                                    } else {
-                                        None
-                                    }
-                                }
-                            }
-                        } else {
-                            None
-                        }
-                    })
                     .unwrap_or_else(|| panic!("Failed to resolve type: {:?}", literal.ty));
 
                 TypedExpression {

@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
                 let ty = self.matches(TokenKind::Ident).expect("Expected type");
                 self.token_stream.source()[ty.start..ty.end].into()
             } else {
-                Type::from("unit")
+                Type::from("Unit")
             };
 
             self.matches(TokenKind::Eq)
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
             let ty = self.matches(TokenKind::Ident).expect("Expected type");
             self.token_stream.source()[ty.start..ty.end].into()
         } else {
-            Type::from("unit")
+            Type::from("Unit")
         };
 
         let body = self.matches(TokenKind::Eq).map(|_| self.expression());
@@ -431,7 +431,7 @@ impl<'a> Parser<'a> {
                     LiteralKind::Bool => {
                         let lexeme = &self.token_stream.source()[token.start..token.end];
                         Literal {
-                            ty: Type::from("bool"),
+                            ty: Type::from("Bool"),
                             value: LiteralValue::Bool(lexeme == "true"),
                         }
                     }
@@ -441,7 +441,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::from("string"),
+                            ty: Type::from("String"),
                             value: LiteralValue::String(
                                 self.token_stream.source()[token.start..token.end].to_string(),
                             ),
@@ -454,7 +454,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::InferInt,
+                            ty: Type::from("Int"),
                             value: LiteralValue::Integer(
                                 self.token_stream.source()[token.start..token.end]
                                     .parse()
@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     LiteralKind::Float { .. } => Literal {
-                        ty: Type::InferFloat,
+                        ty: Type::from("Float"),
                         value: LiteralValue::Float(
                             self.token_stream.source()[token.start..token.end]
                                 .parse()

@@ -1,15 +1,15 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use tcast::types::Type;
+use tcast::{namespace::Namespace, types::Type};
 
 use crate::resolver::TypeResolver;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Scope {
     enclosing: Option<Rc<Scope>>,
-    values: RefCell<HashMap<String, Type>>,
+    values: RefCell<HashMap<String, ScopeValueData>>,
     resolver: Rc<TypeResolver>,
-    namespaces: Rc<RefCell<HashMap<String, Rc<Scope>>>>,
+    namespaces: Rc<RefCell<HashMap<String, Rc<Namespace>>>>,
 }
 
 impl Scope {
@@ -31,53 +31,58 @@ impl Scope {
         }
     }
 
-    pub fn insert(&self, ident: String, ty: Type) -> bool {
-        self.values.borrow_mut().insert(ident, ty).is_some()
-    }
-
-    pub fn get(&self, ident: &str) -> Option<Type> {
+    pub fn insert(&self, ident: String, ty: Type, is_mut: bool) -> bool {
         self.values
-            .borrow()
-            .get(ident)
-            .cloned()
-            .or_else(|| {
-                self.namespaces
-                    .borrow()
-                    .get(ident)
-                    .map(|ns| Type::Namespace {
-                        alias: ident.to_string(),
-                        fields: ns
-                            .values
-                            .borrow()
-                            .iter()
-                            .map(|(name, ty)| (name.clone(), ty.clone()))
-                            .collect(),
-                    })
-            })
-            .or_else(|| {
-                self.enclosing
-                    .as_ref()
-                    .map(|scope| scope.get(ident))
-                    .unwrap_or(None)
-            })
+            .borrow_mut()
+            .insert(ident, ScopeValueData { ty, is_mut })
+            .is_some()
     }
 
-    pub fn create_namespace(&self, name: String, scope: Rc<Scope>) -> Option<Rc<Scope>> {
-        let scope = Scope::new(scope);
+    pub fn get(&self, ident: &str) -> Option<ScopeValueData> {
+        self.values.borrow().get(ident).cloned().or_else(|| {
+            self.enclosing
+                .as_ref()
+                .map(|scope| scope.get(ident))
+                .unwrap_or(None)
+        })
+    }
+
+    pub fn get_namespace(&self, name: &str) -> Option<Rc<Namespace>> {
+        self.namespaces.borrow().get(name).cloned()
+    }
+
+    pub fn create_namespace(&self, name: String) -> Option<Rc<Namespace>> {
+        let ns = Rc::new(Namespace::default());
 
         if self
             .namespaces
             .borrow_mut()
-            .insert(name, Rc::clone(&scope))
+            .insert(name, Rc::clone(&ns))
             .is_some()
         {
             None
         } else {
-            Some(scope)
+            Some(ns)
         }
     }
 
     pub fn type_resolver(&self) -> &TypeResolver {
         &self.resolver
     }
+
+    pub fn unwrap(
+        self,
+    ) -> (
+        RefCell<HashMap<String, ScopeValueData>>,
+        Rc<TypeResolver>,
+        Rc<RefCell<HashMap<String, Rc<Namespace>>>>,
+    ) {
+        (self.values, self.resolver, self.namespaces)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ScopeValueData {
+    pub ty: Type,
+    pub is_mut: bool,
 }

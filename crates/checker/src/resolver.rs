@@ -56,10 +56,10 @@ impl TypeResolver {
             .push(StructImpl { methods });
     }
 
-    pub fn resolve_impl(&self, ty: Type) -> Option<Vec<StructImpl>> {
+    pub fn resolve_impl(&self, ty: &Type) -> Option<Vec<StructImpl>> {
         self.impls
             .borrow()
-            .get(&ty)
+            .get(ty)
             .cloned()
             .or_else(|| self.enclosing.as_ref().and_then(|r| r.resolve_impl(ty)))
     }

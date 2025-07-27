@@ -121,6 +121,12 @@ impl Codegen {
                 let expr = Self::expression(expr);
                 format!("new {expr}")
             }
+            Expression::Assignment { assignee, expr } => {
+                let assignee = Self::expression(assignee);
+                let expr = Self::expression(expr);
+
+                format!("{assignee}={expr}")
+            }
         }
     }
 }

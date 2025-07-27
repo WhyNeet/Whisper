@@ -311,6 +311,22 @@ impl TypedAstTransformer {
 
                 (tail, expr)
             }
+            TExpression::Assignment { assignee, expr } => {
+                let (mut assignee_tail, assignee_expr) = self.expression(assignee);
+                let (mut tail, expr) = self.expression(expr);
+
+                assignee_tail.append(&mut tail);
+                let tail = assignee_tail;
+
+                (
+                    tail,
+                    Expression::Assignment {
+                        assignee: Box::new(assignee_expr),
+                        expr: Box::new(expr),
+                    },
+                )
+            }
+            TExpression::Namespace { alias, .. } => (vec![], Expression::Identifier(alias.clone())),
         }
     }
 }

@@ -31,4 +31,8 @@ pub enum Expression {
         expr: Box<Expression>,
         ident: String,
     },
+    Assignment {
+        assignee: Box<Expression>,
+        expr: Box<Expression>,
+    },
 }

@@ -97,9 +97,12 @@ impl Checker {
                     *is_extern,
                 )
             }
-            AstStatement::VariableDeclaration { name, is_mut, expr } => {
-                self.var_declaration(name, expr, *is_mut)
-            }
+            AstStatement::VariableDeclaration {
+                name,
+                is_mut,
+                expr,
+                ty,
+            } => self.var_declaration(name, expr, *is_mut, ty),
             AstStatement::StructDeclaration { name, fields } => {
                 self.struct_declaration(name, fields)
             }
@@ -232,8 +235,15 @@ impl Checker {
         name: &String,
         expr: &AstExpression,
         is_mut: bool,
+        ty: &Option<AstType>,
     ) -> TypedStatement {
-        let expr = self.expression(expr, None);
+        let expr = self.expression(
+            expr,
+            ty.as_ref()
+                .map(|ty| self.scope.borrow().type_resolver().resolve_ast_type(ty))
+                .flatten()
+                .as_ref(),
+        );
 
         self.scope
             .borrow()

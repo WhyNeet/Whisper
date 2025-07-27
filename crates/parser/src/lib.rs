@@ -197,6 +197,17 @@ impl<'a> Parser<'a> {
         let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
         let ident = self.token_stream.source()[ident.start..ident.end].to_string();
 
+        let ty = if self.matches(TokenKind::Colon).is_some() {
+            let ident = self
+                .matches(TokenKind::Ident)
+                .expect("Expected type identifier");
+            Some(Type::from(
+                &self.token_stream.source()[ident.start..ident.end],
+            ))
+        } else {
+            None
+        };
+
         self.matches(TokenKind::Eq).expect("Expected `=`");
 
         let expr = self.expression();
@@ -207,6 +218,7 @@ impl<'a> Parser<'a> {
             name: ident,
             is_mut,
             expr,
+            ty,
         }
     }
 

@@ -121,7 +121,7 @@ impl Checker {
 
         let tmp_scope = self.scope.replace(prev_scope);
         let tmp_scope = Rc::try_unwrap(tmp_scope).unwrap();
-        let (values, _, _) = tmp_scope.unwrap();
+        let values = tmp_scope.unwrap_values();
 
         for (name, value) in values.borrow().iter() {
             namespace.add_member(name.clone(), value.ty.clone())
@@ -244,8 +244,7 @@ impl Checker {
         let expr = self.expression(
             expr,
             ty.as_ref()
-                .map(|ty| self.scope.borrow().type_resolver().resolve_ast_type(ty))
-                .flatten()
+                .and_then(|ty| self.scope.borrow().type_resolver().resolve_ast_type(ty))
                 .as_ref(),
         );
 
@@ -479,14 +478,13 @@ impl Checker {
             }
             AstExpression::Literal(literal) => {
                 let ty = expect_ty
-                    .map(|ty| {
+                    .and_then(|ty| {
                         if ty.is_whole() && literal.ty.is_whole() {
                             Some(ty.clone())
                         } else {
                             None
                         }
                     })
-                    .flatten()
                     .or_else(|| {
                         self.scope
                             .borrow()
@@ -620,14 +618,13 @@ impl Checker {
                     .borrow()
                     .type_resolver()
                     .resolve_impl(&expr.ty)
-                    .expect(&format!("No method `{ident}` found"));
+                    .unwrap_or_else(|| panic!("No method `{ident}` found"));
 
                 let method = impls
                     .into_iter()
-                    .map(|i| i.methods)
-                    .flatten()
+                    .flat_map(|i| i.methods)
                     .find(|method| method.name == *ident)
-                    .expect(&format!("No method `{ident}` found"));
+                    .unwrap_or_else(|| panic!("No method `{ident}` found"));
 
                 TypedExpression {
                     ty: TcAstType::Fn {

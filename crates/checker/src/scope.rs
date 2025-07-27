@@ -70,14 +70,8 @@ impl Scope {
         &self.resolver
     }
 
-    pub fn unwrap(
-        self,
-    ) -> (
-        RefCell<HashMap<String, ScopeValueData>>,
-        Rc<TypeResolver>,
-        Rc<RefCell<HashMap<String, Rc<Namespace>>>>,
-    ) {
-        (self.values, self.resolver, self.namespaces)
+    pub fn unwrap_values(self) -> RefCell<HashMap<String, ScopeValueData>> {
+        self.values
     }
 }
 

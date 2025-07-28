@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 > A functional, statically typed language that transpiles to JavaScript - inspired by Rust's syntax.
 
-**Whisper** is a modern programming language that brings functional programming, type safety, and expressive syntax to the JavaScript ecosystem. It compiles directly to minified, unreadable JavaScript, making it perfect for frontend, backend, or fullstack development — all while enforcing purity, immutability, and correctness by design (most of the time).
+**Whisper** is a modern programming language that brings functional programming, type safety, and expressive syntax to the JavaScript ecosystem. It compiles directly to minified, unreadable JavaScript, making it perfect for frontend, backend, or fullstack development - all while enforcing purity, immutability, and correctness by design (most of the time).
 
 ```whisper
 // Effectful function (performs I/O)
@@ -33,7 +33,7 @@ fn{io} println(s: string) = {
 
 ## 🚀 Getting Started
 
-1. Install the compiler
+1. Install the compiler <br />
 For now, build from source:
 ```bash
 git clone https://github.com/WhyNeet/Whisper.git

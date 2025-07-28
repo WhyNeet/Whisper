@@ -187,10 +187,7 @@ impl Checker {
         let resolver = scope.type_resolver();
         resolver.add_impl(resolver.resolve_alias(&ident).unwrap(), methods.clone());
 
-        let stmt = Statement::Impl {
-            ident: ident,
-            methods,
-        };
+        let stmt = Statement::Impl { ident, methods };
 
         TypedStatement {
             effects: vec![],
@@ -268,6 +265,7 @@ impl Checker {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn fn_declaration(
         &self,
         name: Atom,

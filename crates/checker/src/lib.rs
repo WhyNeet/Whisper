@@ -9,7 +9,7 @@ use ast::{
     stmt::{Statement as AstStatement, StructField, StructMethod},
     types::Type as AstType,
 };
-use common::{annotations::Annotation, effects::Effect};
+use common::effects::Effect;
 use tcast::{
     expr::{Expression, Literal, TypedExpression},
     module::Module,
@@ -45,12 +45,7 @@ impl Checker {
 
         Module {
             stmts,
-            entrypoint: self
-                .main_fn
-                .borrow()
-                .as_ref()
-                .expect("Entrypoint is not defined (use `@main` annotation to define entrypoint).")
-                .to_string(),
+            entrypoint: self.main_fn.borrow().as_ref().map(|name| name.to_string()),
         }
     }
 
@@ -70,10 +65,10 @@ impl Checker {
                 parameters,
                 body,
                 effects,
-                annotations,
                 is_extern,
+                is_pub,
             } => {
-                if annotations.contains(&Annotation::Main) {
+                if name == "main" {
                     if let Some(main_fn) = &*self.main_fn.borrow() {
                         panic!("Main function is already defined (`{main_fn}`)");
                     }
@@ -95,6 +90,7 @@ impl Checker {
                     return_type,
                     effects,
                     *is_extern,
+                    *is_pub,
                 )
             }
             AstStatement::VariableDeclaration {
@@ -103,9 +99,11 @@ impl Checker {
                 expr,
                 ty,
             } => self.var_declaration(name, expr, *is_mut, ty),
-            AstStatement::StructDeclaration { name, fields } => {
-                self.struct_declaration(name, fields)
-            }
+            AstStatement::StructDeclaration {
+                name,
+                fields,
+                is_pub,
+            } => self.struct_declaration(name, fields, *is_pub),
             AstStatement::Impl { ident, methods } => self.impl_stmt(ident, methods),
             AstStatement::Namespace { name, stmts } => self.namespace_stmt(name.clone(), stmts),
         }
@@ -198,7 +196,12 @@ impl Checker {
         }
     }
 
-    pub fn struct_declaration(&self, name: &String, fields: &[StructField]) -> TypedStatement {
+    pub fn struct_declaration(
+        &self,
+        name: &String,
+        fields: &[StructField],
+        is_pub: bool,
+    ) -> TypedStatement {
         let scope = self.scope.borrow();
         let resolver = scope.type_resolver();
         let fields = fields
@@ -222,6 +225,7 @@ impl Checker {
         let stmt = Statement::StructDeclaration {
             name: name.to_string(),
             fields: fields.clone(),
+            is_pub,
         };
 
         if self.scope.borrow().type_resolver().insert(name.clone(), ty) {
@@ -274,6 +278,7 @@ impl Checker {
         return_type: &AstType,
         effects: &[Effect],
         is_extern: bool,
+        is_pub: bool,
     ) -> TypedStatement {
         let prev_scope = self
             .scope
@@ -347,6 +352,7 @@ impl Checker {
             body,
             is_extern,
             effects: effects.to_owned(),
+            is_pub,
         };
 
         TypedStatement {

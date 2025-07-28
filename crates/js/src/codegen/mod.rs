@@ -66,6 +66,10 @@ impl Codegen {
                 let stmts = stmts.into_iter().map(Self::statement).collect::<String>();
                 format!("{{{stmts}}}")
             }
+            Statement::Export(stmt) => {
+                let stmt = Self::statement(*stmt);
+                format!("export {stmt}")
+            }
         }
     }
 

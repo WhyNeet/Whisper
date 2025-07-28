@@ -34,10 +34,12 @@ impl TypedAstTransformer {
             stmts.append(&mut self.statement(stmt));
         }
 
-        stmts.push(Statement::Expression(Expression::FunctionCall {
-            expr: Box::new(Expression::Identifier(module.entrypoint.to_string())),
-            args: vec![],
-        }));
+        if let Some(ref entrypoint) = module.entrypoint {
+            stmts.push(Statement::Expression(Expression::FunctionCall {
+                expr: Box::new(Expression::Identifier(entrypoint.to_string())),
+                args: vec![],
+            }));
+        }
 
         Program { stmts }
     }
@@ -58,10 +60,11 @@ impl TypedAstTransformer {
                 name,
                 parameters,
                 body,
+                is_pub,
                 ..
             } => {
                 if let Some(body) = body {
-                    vec![self.fn_declaration(name, parameters, body)]
+                    vec![self.fn_declaration(name, parameters, body, *is_pub)]
                 } else {
                     vec![]
                 }
@@ -69,7 +72,11 @@ impl TypedAstTransformer {
             TStatement::VariableDeclaration { name, is_mut, expr } => {
                 self.var_declaration(name, expr, *is_mut)
             }
-            TStatement::StructDeclaration { name, fields } => {
+            TStatement::StructDeclaration {
+                name,
+                fields,
+                is_pub,
+            } => {
                 self.type_resolver.borrow().insert(
                     name.clone(),
                     Type::Struct {
@@ -80,7 +87,7 @@ impl TypedAstTransformer {
                         alias: name.clone(),
                     },
                 );
-                vec![self.struct_declaration(name, fields)]
+                vec![self.struct_declaration(name, fields, *is_pub)]
             }
             TStatement::Impl { ident, methods } => methods
                 .iter()
@@ -89,6 +96,7 @@ impl TypedAstTransformer {
                         &format!("{ident}_{}", method.name),
                         &method.parameters,
                         &method.body,
+                        method.is_pub,
                     )
                 })
                 // .chain(methods.iter().map(|method| Statement::Assignment {
@@ -107,7 +115,7 @@ impl TypedAstTransformer {
         }
     }
 
-    fn struct_declaration(&self, name: &String, fields: &[StructField]) -> Statement {
+    fn struct_declaration(&self, name: &String, fields: &[StructField], is_pub: bool) -> Statement {
         let body = fields
             .iter()
             .map(|field| Statement::Assignment {
@@ -119,11 +127,17 @@ impl TypedAstTransformer {
             })
             .collect();
 
-        Statement::FunctionDeclaration {
+        let stmt = Statement::FunctionDeclaration {
             is_async: false,
             ident: name.to_string(),
             params: fields.iter().map(|field| field.name.clone()).collect(),
             body,
+        };
+
+        if is_pub {
+            Statement::Export(Box::new(stmt))
+        } else {
+            stmt
         }
     }
 
@@ -149,6 +163,7 @@ impl TypedAstTransformer {
         name: &String,
         parameters: &[(String, Type)],
         body: &TypedExpression,
+        is_pub: bool,
     ) -> Statement {
         let (stmts, ret) = self.expression(body);
         let mut body = stmts;
@@ -156,7 +171,7 @@ impl TypedAstTransformer {
             body.push(Statement::Return(ret));
         }
 
-        Statement::FunctionDeclaration {
+        let stmt = Statement::FunctionDeclaration {
             is_async: false,
             ident: name.to_string(),
             params: parameters
@@ -164,6 +179,12 @@ impl TypedAstTransformer {
                 .map(|(param, _)| param.to_string())
                 .collect(),
             body,
+        };
+
+        if is_pub {
+            Statement::Export(Box::new(stmt))
+        } else {
+            stmt
         }
     }
 

@@ -20,4 +20,5 @@ pub enum Statement {
         target: Expression,
         expr: Expression,
     },
+    Export(Box<Statement>),
 }

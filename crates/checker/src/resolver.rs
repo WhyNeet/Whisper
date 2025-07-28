@@ -1,7 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use string_cache::DefaultAtom as Atom;
-use tcast::stmt::StructMethod;
-use tcast::types::Type;
+use tcast::{stmt::FunctionDeclaration, types::Type};
 
 #[derive(Debug, Default)]
 pub struct TypeResolver {
@@ -49,7 +48,7 @@ impl TypeResolver {
         }
     }
 
-    pub fn add_impl(&self, ty: Type, methods: Vec<StructMethod>) {
+    pub fn add_impl(&self, ty: Type, methods: Vec<FunctionDeclaration>) {
         self.impls
             .borrow_mut()
             .entry(ty)
@@ -80,6 +79,6 @@ impl TypeResolver {
 
 #[derive(Debug, Clone)]
 pub struct StructImpl {
-    pub(crate) methods: Vec<StructMethod>,
+    pub(crate) methods: Vec<FunctionDeclaration>,
     // May add trait name here later
 }

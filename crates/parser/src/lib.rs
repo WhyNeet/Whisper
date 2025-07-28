@@ -1,6 +1,9 @@
 use ast::expr::{Expression, Literal};
 use ast::module::Module;
-use ast::stmt::{Statement, StructField, StructMethod};
+use ast::stmt::{
+    ExpressionStmt, FunctionDeclaration, Impl, Import, Namespace, Statement, StructDeclaration,
+    StructField, VariableDeclaration,
+};
 use ast::types::Type;
 use common::effects::Effect;
 use common::literal::LiteralValue;
@@ -93,9 +96,29 @@ impl<'a> Parser<'a> {
             .is_some()
         {
             self.namespace_stmt()
+        } else if self.matches(TokenKind::Keyword(Keyword::Import)).is_some() {
+            self.import_stmt()
         } else {
             self.expr_stmt()
         }
+    }
+
+    fn import_stmt(&mut self) -> Statement {
+        let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+        let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
+
+        let mut path = vec![ident];
+
+        while self.matches(TokenKind::ColonColon).is_some() {
+            let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
+            let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
+
+            path.push(ident);
+        }
+
+        self.matches(TokenKind::Semi).expect("Expected semicolon");
+
+        Statement::Import(Box::new(Import { path }))
     }
 
     fn namespace_stmt(&mut self) -> Statement {
@@ -113,7 +136,7 @@ impl<'a> Parser<'a> {
             stmts.push(self.statement());
         }
 
-        Statement::Namespace { name, stmts }
+        Statement::Namespace(Box::new(Namespace { name, stmts }))
     }
 
     fn impl_stmt(&mut self) -> Statement {
@@ -156,20 +179,20 @@ impl<'a> Parser<'a> {
 
             let body = self.expression();
 
-            let method = StructMethod {
+            let method = FunctionDeclaration {
                 name,
                 is_pub,
-                annotations: vec![],
                 effects,
                 parameters,
                 return_type,
-                body,
+                body: Some(body),
+                is_extern: false,
             };
 
             methods.push(method);
         }
 
-        Statement::Impl { ident, methods }
+        Statement::Impl(Box::new(Impl { ident, methods }))
     }
 
     fn struct_decl(&mut self, is_pub: bool) -> Statement {
@@ -199,11 +222,11 @@ impl<'a> Parser<'a> {
             fields.push(StructField { is_pub, name, ty });
         }
 
-        Statement::StructDeclaration {
+        Statement::StructDeclaration(Box::new(StructDeclaration {
             name: ident,
             fields,
             is_pub,
-        }
+        }))
     }
 
     fn var_decl(&mut self) -> Statement {
@@ -229,12 +252,12 @@ impl<'a> Parser<'a> {
 
         self.matches(TokenKind::Semi).expect("Expected semicolon");
 
-        Statement::VariableDeclaration {
+        Statement::VariableDeclaration(Box::new(VariableDeclaration {
             name: ident,
             is_mut,
             expr,
             ty,
-        }
+        }))
     }
 
     fn effects(&mut self) -> Vec<Effect> {
@@ -291,7 +314,7 @@ impl<'a> Parser<'a> {
 
         self.matches(TokenKind::Semi);
 
-        Statement::FunctionDeclaration {
+        Statement::FunctionDeclaration(Box::new(FunctionDeclaration {
             name,
             return_type,
             parameters: params,
@@ -299,7 +322,7 @@ impl<'a> Parser<'a> {
             effects,
             is_extern,
             is_pub,
-        }
+        }))
     }
 
     fn fn_params(&mut self) -> Vec<(Atom, Type)> {
@@ -330,10 +353,10 @@ impl<'a> Parser<'a> {
     fn expr_stmt(&mut self) -> Statement {
         let expr = self.expression();
 
-        Statement::Expression {
+        Statement::Expression(Box::new(ExpressionStmt {
             expr,
             has_semi: self.matches(TokenKind::Semi).is_some(),
-        }
+        }))
     }
 
     fn expression(&mut self) -> Expression {
@@ -610,7 +633,7 @@ impl<'a> Parser<'a> {
 
         if !stmts.is_empty()
             && !stmts[..stmts.len() - 1].iter().all(|stmt| match stmt {
-                Statement::Expression { has_semi, .. } => *has_semi,
+                Statement::Expression(expr) => expr.has_semi,
                 _ => true,
             })
         {
@@ -619,12 +642,12 @@ impl<'a> Parser<'a> {
 
         if !stmts.is_empty()
             && match stmts.last().unwrap() {
-                Statement::Expression { has_semi, .. } => !has_semi,
+                Statement::Expression(expr) => !expr.has_semi,
                 _ => false,
             }
         {
             let last = match stmts.pop().unwrap() {
-                Statement::Expression { expr, .. } => expr,
+                Statement::Expression(expr) => expr.expr,
                 _ => unreachable!(),
             };
             Expression::Block {

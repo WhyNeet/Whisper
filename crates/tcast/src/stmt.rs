@@ -1,5 +1,5 @@
 use crate::{expr::TypedExpression, types::Type};
-use common::{annotations::Annotation, effects::Effect};
+use common::effects::Effect;
 use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
@@ -11,36 +11,11 @@ pub struct TypedStatement {
 #[derive(Debug, Clone)]
 pub enum Statement {
     Expression(TypedExpression),
-    FunctionDeclaration {
-        name: Atom,
-        return_type: Type,
-        parameters: Vec<(Atom, Type)>,
-        body: Option<TypedExpression>,
-        effects: Vec<Effect>,
-        is_extern: bool,
-        is_pub: bool,
-    },
-    VariableDeclaration {
-        name: Atom,
-        is_mut: bool,
-        expr: TypedExpression,
-    },
-    StructDeclaration {
-        name: Atom,
-        fields: Vec<StructField>,
-        is_pub: bool,
-    },
-    Impl {
-        ident: Atom,
-        methods: Vec<StructMethod>,
-    },
-    Annotated {
-        annotations: Vec<Annotation>,
-        stmt: Box<TypedStatement>,
-    },
-    Namespace {
-        stmts: Vec<TypedStatement>,
-    },
+    FunctionDeclaration(Box<FunctionDeclaration>),
+    VariableDeclaration(Box<VariableDeclaration>),
+    StructDeclaration(Box<StructDeclaration>),
+    Impl(Box<Impl>),
+    Namespace(Box<Namespace>),
 }
 
 #[derive(Debug, Clone)]
@@ -51,12 +26,37 @@ pub struct StructField {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructMethod {
+pub struct FunctionDeclaration {
     pub name: Atom,
     pub return_type: Type,
     pub parameters: Vec<(Atom, Type)>,
-    pub body: TypedExpression,
+    pub body: Option<TypedExpression>,
     pub effects: Vec<Effect>,
-    pub annotations: Vec<Annotation>,
+    pub is_extern: bool,
     pub is_pub: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct VariableDeclaration {
+    pub name: Atom,
+    pub is_mut: bool,
+    pub expr: TypedExpression,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDeclaration {
+    pub name: Atom,
+    pub fields: Vec<StructField>,
+    pub is_pub: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Impl {
+    pub ident: Atom,
+    pub methods: Vec<FunctionDeclaration>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Namespace {
+    pub stmts: Vec<TypedStatement>,
 }

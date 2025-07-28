@@ -149,6 +149,7 @@ pub enum Keyword {
     Impl,
     Extern,
     Namespace,
+    Import,
 }
 
 impl TryFrom<&str> for Keyword {
@@ -165,6 +166,7 @@ impl TryFrom<&str> for Keyword {
             "impl" => Ok(Self::Impl),
             "extern" => Ok(Self::Extern),
             "namespace" => Ok(Self::Namespace),
+            "import" => Ok(Self::Import),
             _ => Err("not a keyword."),
         }
     }

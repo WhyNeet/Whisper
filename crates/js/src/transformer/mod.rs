@@ -7,7 +7,10 @@ use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator};
 use tcast::{
     expr::{Expression as TExpression, TypedExpression},
     module::Module,
-    stmt::{Statement as TStatement, StructField, TypedStatement},
+    stmt::{
+        FunctionDeclaration, Statement as TStatement, StructDeclaration, TypedStatement,
+        VariableDeclaration,
+    },
     types::Type,
 };
 
@@ -28,10 +31,10 @@ pub struct TypedAstTransformer {
 }
 
 impl TypedAstTransformer {
-    pub fn run(&self, module: &Module) -> Program {
+    pub fn run(&self, module: Module) -> Program {
         let mut stmts = vec![];
 
-        for stmt in module.stmts.iter() {
+        for stmt in module.stmts {
             stmts.append(&mut self.statement(stmt));
         }
 
@@ -45,8 +48,8 @@ impl TypedAstTransformer {
         Program { stmts }
     }
 
-    fn statement(&self, stmt: &TypedStatement) -> Vec<Statement> {
-        match &stmt.stmt {
+    fn statement(&self, stmt: TypedStatement) -> Vec<Statement> {
+        match stmt.stmt {
             TStatement::Expression(expr) => {
                 if stmt.effects.is_empty() {
                     return vec![];
@@ -57,66 +60,48 @@ impl TypedAstTransformer {
 
                 tail
             }
-            TStatement::FunctionDeclaration {
-                name,
-                parameters,
-                body,
-                is_pub,
-                ..
-            } => {
-                if let Some(body) = body {
-                    vec![self.fn_declaration(name.clone(), parameters, body, *is_pub)]
+            TStatement::FunctionDeclaration(func) => {
+                if func.body.is_some() {
+                    vec![self.fn_declaration(*func)]
                 } else {
                     vec![]
                 }
             }
-            TStatement::VariableDeclaration { name, is_mut, expr } => {
-                self.var_declaration(name.clone(), expr, *is_mut)
-            }
-            TStatement::StructDeclaration {
-                name,
-                fields,
-                is_pub,
-            } => {
+            TStatement::VariableDeclaration(var) => self.var_declaration(*var),
+            TStatement::StructDeclaration(str) => {
                 self.type_resolver.borrow().insert(
-                    name.clone(),
+                    str.name.clone(),
                     Type::Struct {
-                        fields: fields
+                        fields: str
+                            .fields
                             .iter()
                             .map(|field| (field.name.clone(), field.ty.clone()))
                             .collect(),
-                        alias: name.clone(),
+                        alias: str.name.clone(),
                     },
                 );
-                vec![self.struct_declaration(name.clone(), fields, *is_pub)]
+                vec![self.struct_declaration(*str)]
             }
-            TStatement::Impl { ident, methods } => methods
-                .iter()
+            TStatement::Impl(impl_stmt) => impl_stmt
+                .methods
+                .into_iter()
                 .map(|method| {
-                    self.fn_declaration(
-                        Atom::from(format!("{ident}_{}", method.name)),
-                        &method.parameters,
-                        &method.body,
-                        method.is_pub,
-                    )
+                    self.fn_declaration(FunctionDeclaration {
+                        name: Atom::from(format!("{}_{}", impl_stmt.ident, method.name)),
+                        ..method
+                    })
                 })
-                // .chain(methods.iter().map(|method| Statement::Assignment {
-                //     target: Expression::MemberAccess {
-                //         expr: Box::new(Expression::MemberAccess {
-                //             expr: Box::new(Expression::Identifier(ident.clone())),
-                //             ident: "prototype".to_string(),
-                //         }),
-                //         ident: method.name.clone(),
-                //     },
-                //     expr: Expression::Identifier(format!("{ident}_{}", method.name)),
-                // }))
                 .collect(),
-            TStatement::Annotated { .. } => todo!(),
             TStatement::Namespace { .. } => vec![],
         }
     }
 
-    fn struct_declaration(&self, name: Atom, fields: &[StructField], is_pub: bool) -> Statement {
+    fn struct_declaration(&self, str: StructDeclaration) -> Statement {
+        let StructDeclaration {
+            name,
+            fields,
+            is_pub,
+        } = str;
         let body = fields
             .iter()
             .map(|field| Statement::Assignment {
@@ -142,7 +127,9 @@ impl TypedAstTransformer {
         }
     }
 
-    fn var_declaration(&self, name: Atom, expr: &TypedExpression, is_mut: bool) -> Vec<Statement> {
+    fn var_declaration(&self, var: VariableDeclaration) -> Vec<Statement> {
+        let VariableDeclaration { name, is_mut, expr } = var;
+
         let (mut tail, expr) = self.expression(expr);
 
         tail.push(Statement::VariableDeclaration {
@@ -154,13 +141,15 @@ impl TypedAstTransformer {
         tail
     }
 
-    fn fn_declaration(
-        &self,
-        name: Atom,
-        parameters: &[(Atom, Type)],
-        body: &TypedExpression,
-        is_pub: bool,
-    ) -> Statement {
+    fn fn_declaration(&self, func: FunctionDeclaration) -> Statement {
+        let FunctionDeclaration {
+            name,
+            parameters,
+            body,
+            is_pub,
+            ..
+        } = func;
+        let body = body.unwrap();
         let (stmts, ret) = self.expression(body);
         let mut body = stmts;
         if ret != Expression::Literal(Literal::Void) {
@@ -181,8 +170,8 @@ impl TypedAstTransformer {
         }
     }
 
-    fn expression(&self, expr: &TypedExpression) -> (Vec<Statement>, Expression) {
-        match &expr.expr {
+    fn expression(&self, expr: TypedExpression) -> (Vec<Statement>, Expression) {
+        match expr.expr {
             TExpression::Literal(literal) => (
                 vec![],
                 Expression::Literal(match &literal.value {
@@ -195,11 +184,11 @@ impl TypedAstTransformer {
             ),
             TExpression::Identifier(ident) => (vec![], Expression::Identifier(ident.clone())),
             TExpression::Grouping(expr) => {
-                let (tail, expr) = self.expression(expr);
+                let (tail, expr) = self.expression(*expr);
                 (tail, Expression::Grouping(Box::new(expr)))
             }
             TExpression::Unary { operator, expr } => {
-                let (tail, expr) = self.expression(expr);
+                let (tail, expr) = self.expression(*expr);
 
                 (
                     tail,
@@ -217,8 +206,8 @@ impl TypedAstTransformer {
                 left,
                 right,
             } => {
-                let (left_tail, left) = self.expression(left);
-                let (right_tail, right) = self.expression(right);
+                let (left_tail, left) = self.expression(*left);
+                let (right_tail, right) = self.expression(*right);
 
                 (
                     [left_tail, right_tail].concat(),
@@ -242,7 +231,7 @@ impl TypedAstTransformer {
                 )
             }
             TExpression::MemberAccess { expr, ident } => {
-                let (tail, expr) = self.expression(expr);
+                let (tail, expr) = self.expression(*expr);
 
                 (
                     tail,
@@ -256,7 +245,7 @@ impl TypedAstTransformer {
                 expr,
                 ident: method_ident,
             } => {
-                let (tail, expr) = self.expression(expr);
+                let (tail, expr) = self.expression(*expr);
 
                 (
                     tail,
@@ -267,12 +256,12 @@ impl TypedAstTransformer {
                 )
             }
             TExpression::FunctionCall { expr, args } => {
-                let (tail, expr) = self.expression(expr);
+                let (tail, expr) = self.expression(*expr);
 
-                let (args_tails, args) =
-                    args.iter()
-                        .map(|arg| self.expression(arg))
-                        .collect::<(Vec<Vec<Statement>>, Vec<Expression>)>();
+                let (args_tails, args) = args
+                    .into_iter()
+                    .map(|arg| self.expression(arg))
+                    .collect::<(Vec<Vec<Statement>>, Vec<Expression>)>();
 
                 (
                     [tail, args_tails.concat()].concat(),
@@ -286,12 +275,10 @@ impl TypedAstTransformer {
                 return_expr, stmts, ..
             } => {
                 let mut tail = stmts
-                    .iter()
+                    .into_iter()
                     .map(|stmt| self.statement(stmt))
                     .collect::<Vec<_>>();
-                let return_expr = return_expr
-                    .as_ref()
-                    .map(|expr| self.expression(expr.as_ref()));
+                let return_expr = return_expr.map(|expr| self.expression(*expr));
 
                 let Some((ret_tail, expr)) = return_expr else {
                     return (tail.concat(), Expression::Literal(Literal::Void));
@@ -303,7 +290,7 @@ impl TypedAstTransformer {
             }
             TExpression::StructInit { ty, fields, .. } => {
                 let (tails, exprs) = fields
-                    .iter()
+                    .into_iter()
                     .map(|(_, expr)| {
                         let (tail, expr) = self.expression(expr);
                         (tail, expr)
@@ -311,7 +298,7 @@ impl TypedAstTransformer {
                     .collect::<(Vec<_>, Vec<_>)>();
                 let tail = tails.concat();
 
-                let name = self.type_resolver.borrow().resolve(ty).unwrap();
+                let name = self.type_resolver.borrow().resolve(&ty).unwrap();
 
                 let expr = Expression::New {
                     expr: Box::new(Expression::FunctionCall {
@@ -323,8 +310,8 @@ impl TypedAstTransformer {
                 (tail, expr)
             }
             TExpression::Assignment { assignee, expr } => {
-                let (mut assignee_tail, assignee_expr) = self.expression(assignee);
-                let (mut tail, expr) = self.expression(expr);
+                let (mut assignee_tail, assignee_expr) = self.expression(*assignee);
+                let (mut tail, expr) = self.expression(*expr);
 
                 assignee_tail.append(&mut tail);
                 let tail = assignee_tail;

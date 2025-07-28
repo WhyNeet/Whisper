@@ -48,7 +48,7 @@ pub enum Expression {
         fields: Vec<(String, TypedExpression)>,
     },
     MethodAccess {
-        ty: Type,
+        expr: Box<TypedExpression>,
         ident: String,
     },
     Assignment {

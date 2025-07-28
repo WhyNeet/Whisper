@@ -102,7 +102,7 @@ impl Codegen {
             }
             Expression::MethodAccess { expr, ident } => {
                 let expr = Self::expression(expr);
-                format!("{expr}.prototype.{ident}")
+                format!("{expr}_{ident}")
             }
             Expression::Unary { operator, expr } => {
                 let expr = Self::expression(expr);

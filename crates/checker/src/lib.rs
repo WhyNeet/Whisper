@@ -634,7 +634,7 @@ impl Checker {
                     },
                     effects: vec![],
                     expr: Expression::MethodAccess {
-                        ty: expr.ty,
+                        expr: Box::new(expr),
                         ident: ident.clone(),
                     },
                     is_mut: false,

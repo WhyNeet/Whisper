@@ -91,16 +91,16 @@ impl TypedAstTransformer {
                         &method.body,
                     )
                 })
-                .chain(methods.iter().map(|method| Statement::Assignment {
-                    target: Expression::MemberAccess {
-                        expr: Box::new(Expression::MemberAccess {
-                            expr: Box::new(Expression::Identifier(ident.clone())),
-                            ident: "prototype".to_string(),
-                        }),
-                        ident: method.name.clone(),
-                    },
-                    expr: Expression::Identifier(format!("{ident}_{}", method.name)),
-                }))
+                // .chain(methods.iter().map(|method| Statement::Assignment {
+                //     target: Expression::MemberAccess {
+                //         expr: Box::new(Expression::MemberAccess {
+                //             expr: Box::new(Expression::Identifier(ident.clone())),
+                //             ident: "prototype".to_string(),
+                //         }),
+                //         ident: method.name.clone(),
+                //     },
+                //     expr: Expression::Identifier(format!("{ident}_{}", method.name)),
+                // }))
                 .collect(),
             TStatement::Annotated { .. } => todo!(),
             TStatement::Namespace { .. } => vec![],
@@ -239,18 +239,15 @@ impl TypedAstTransformer {
                 )
             }
             TExpression::MethodAccess {
-                ty,
+                expr,
                 ident: method_ident,
             } => {
-                let ident = match ty {
-                    Type::Struct { alias, .. } => alias,
-                    _ => panic!(),
-                };
+                let (tail, expr) = self.expression(expr);
 
                 (
-                    vec![],
+                    tail,
                     Expression::MethodAccess {
-                        expr: Box::new(Expression::Identifier(ident.clone())),
+                        expr: Box::new(expr),
                         ident: method_ident.clone(),
                     },
                 )

@@ -18,9 +18,7 @@ impl CompilationPipeline {
         let codegen = JsTypedAstTransformer::default();
         let program = codegen.run(module);
 
-        let output = JsCodegen::default().run(program);
-
-        output
+        JsCodegen::default().run(program)
     }
 
     pub fn parse_module(contents: String) -> Module {

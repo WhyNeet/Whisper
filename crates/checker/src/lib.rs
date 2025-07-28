@@ -277,7 +277,7 @@ impl Checker {
             scope.insert(
                 name.clone(),
                 resolver
-                    .resolve_ast_type(&ty)
+                    .resolve_ast_type(ty)
                     .unwrap_or_else(|| panic!("Failed to resolve type: {ty:?}")),
                 false,
             );

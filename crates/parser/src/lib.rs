@@ -2,7 +2,6 @@ use ast::expr::{Expression, Literal};
 use ast::module::Module;
 use ast::stmt::{Statement, StructField, StructMethod};
 use ast::types::Type;
-use common::annotations::Annotation;
 use common::effects::Effect;
 use common::literal::LiteralValue;
 use common::ops::{BinaryOperator, UnaryOperator};
@@ -43,35 +42,49 @@ impl<'a> Parser<'a> {
 
     fn statement(&mut self) -> Statement {
         if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
-            self.fn_decl(vec![], false)
+            self.fn_decl(false, false)
         } else if self
             .matches(TokenKind::Keyword(Keyword::Extern))
             .and_then(|_| self.matches(TokenKind::Keyword(Keyword::Fn)))
             .is_some()
         {
-            self.fn_decl(vec![], true)
-        } else if self.matches_peek(TokenKind::At).is_some() {
-            let mut annotations = vec![];
-
-            while self.matches(TokenKind::At).is_some() {
-                let annotation = self.matches(TokenKind::Ident).expect("Expected identifier");
-                annotations.push(
-                    self.token_stream.source()[annotation.start..annotation.end]
-                        .try_into()
-                        .unwrap(),
-                );
+            self.fn_decl(true, false)
+        } else if self.matches(TokenKind::Keyword(Keyword::Pub)).is_some() {
+            if self.matches(TokenKind::Keyword(Keyword::Fn)).is_some() {
+                self.fn_decl(false, true)
+            } else if self
+                .matches(TokenKind::Keyword(Keyword::Extern))
+                .and_then(|_| self.matches(TokenKind::Keyword(Keyword::Fn)))
+                .is_some()
+            {
+                self.fn_decl(true, true)
+            } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
+                self.struct_decl(true)
+            } else {
+                panic!("`pub` keyword can only be applied to function or struct declaration.")
             }
+        }
+        // else if self.matches_peek(TokenKind::At).is_some() {
+        //     while self.matches(TokenKind::At).is_some() {
+        //         let annotation = self.matches(TokenKind::Ident).expect("Expected identifier");
+        //         annotations.push(
+        //             self.token_stream.source()[annotation.start..annotation.end]
+        //                 .try_into()
+        //                 .unwrap(),
+        //         );
+        //     }
 
-            let is_extern = self.matches(TokenKind::Keyword(Keyword::Extern)).is_some();
+        //     let is_extern = self.matches(TokenKind::Keyword(Keyword::Extern)).is_some();
 
-            self.matches(TokenKind::Keyword(Keyword::Fn))
-                .expect("Expected `fn` keyword");
+        //     self.matches(TokenKind::Keyword(Keyword::Fn))
+        //         .expect("Expected `fn` keyword");
 
-            self.fn_decl(annotations, is_extern)
-        } else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
+        //     self.fn_decl(is_extern)
+        // }
+        else if self.matches(TokenKind::Keyword(Keyword::Let)).is_some() {
             self.var_decl()
         } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
-            self.struct_decl()
+            self.struct_decl(false)
         } else if self.matches(TokenKind::Keyword(Keyword::Impl)).is_some() {
             self.impl_stmt()
         } else if self
@@ -158,7 +171,7 @@ impl<'a> Parser<'a> {
         Statement::Impl { ident, methods }
     }
 
-    fn struct_decl(&mut self) -> Statement {
+    fn struct_decl(&mut self, is_pub: bool) -> Statement {
         let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
         let ident = self.token_stream.source()[ident.start..ident.end].to_string();
 
@@ -188,6 +201,7 @@ impl<'a> Parser<'a> {
         Statement::StructDeclaration {
             name: ident,
             fields,
+            is_pub,
         }
     }
 
@@ -252,7 +266,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn fn_decl(&mut self, annotations: Vec<Annotation>, is_extern: bool) -> Statement {
+    fn fn_decl(&mut self, is_extern: bool, is_pub: bool) -> Statement {
         let effects = self.effects();
 
         let name = self.matches(TokenKind::Ident).expect("Expected identifier");
@@ -282,8 +296,8 @@ impl<'a> Parser<'a> {
             parameters: params,
             body,
             effects,
-            annotations,
             is_extern,
+            is_pub,
         }
     }
 

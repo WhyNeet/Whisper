@@ -1,6 +1,6 @@
-use crate::ast::{literal::Literal, ops::UnaryOperator};
-
 use super::ops::BinaryOperator;
+use crate::ast::{literal::Literal, ops::UnaryOperator};
+use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
@@ -13,7 +13,7 @@ pub enum Expression {
         operator: UnaryOperator,
         expr: Box<Expression>,
     },
-    Identifier(String),
+    Identifier(Atom),
     Grouping(Box<Expression>),
     Literal(Literal),
     FunctionCall {
@@ -25,11 +25,11 @@ pub enum Expression {
     },
     MemberAccess {
         expr: Box<Expression>,
-        ident: String,
+        ident: Atom,
     },
     MethodAccess {
         expr: Box<Expression>,
-        ident: String,
+        ident: Atom,
     },
     Assignment {
         assignee: Box<Expression>,

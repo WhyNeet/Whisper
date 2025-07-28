@@ -2,6 +2,7 @@ pub mod resolver;
 pub mod scope;
 
 use std::{cell::RefCell, collections::HashSet, iter, rc::Rc};
+use string_cache::DefaultAtom as Atom;
 
 use ast::{
     expr::Expression as AstExpression,
@@ -23,7 +24,7 @@ use crate::scope::{Scope, ScopeValueData};
 #[derive(Default)]
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
-    main_fn: RefCell<Option<String>>,
+    main_fn: RefCell<Option<Atom>>,
 }
 
 impl Checker {
@@ -45,7 +46,7 @@ impl Checker {
 
         Module {
             stmts,
-            entrypoint: self.main_fn.borrow().as_ref().map(|name| name.to_string()),
+            entrypoint: self.main_fn.take(),
         }
     }
 
@@ -68,11 +69,12 @@ impl Checker {
                 is_extern,
                 is_pub,
             } => {
-                if name == "main" {
+                let name = name.clone();
+                if &name == "main" {
                     if let Some(main_fn) = &*self.main_fn.borrow() {
                         panic!("Main function is already defined (`{main_fn}`)");
                     }
-                    self.main_fn.replace(Some(name.to_string()));
+                    self.main_fn.replace(Some(name.clone()));
                 }
 
                 if *is_extern && body.is_some() {
@@ -98,18 +100,18 @@ impl Checker {
                 is_mut,
                 expr,
                 ty,
-            } => self.var_declaration(name, expr, *is_mut, ty),
+            } => self.var_declaration(name.clone(), expr, *is_mut, ty),
             AstStatement::StructDeclaration {
                 name,
                 fields,
                 is_pub,
-            } => self.struct_declaration(name, fields, *is_pub),
-            AstStatement::Impl { ident, methods } => self.impl_stmt(ident, methods),
+            } => self.struct_declaration(name.clone(), fields, *is_pub),
+            AstStatement::Impl { ident, methods } => self.impl_stmt(ident.clone(), methods),
             AstStatement::Namespace { name, stmts } => self.namespace_stmt(name.clone(), stmts),
         }
     }
 
-    fn namespace_stmt(&self, name: String, stmts: &[AstStatement]) -> TypedStatement {
+    fn namespace_stmt(&self, name: Atom, stmts: &[AstStatement]) -> TypedStatement {
         let prev_scope = self.scope.replace_with(|old| Scope::new(Rc::clone(old)));
         let namespace = prev_scope
             .create_namespace(name)
@@ -131,7 +133,7 @@ impl Checker {
         }
     }
 
-    fn impl_stmt(&self, ident: &str, methods: &[StructMethod]) -> TypedStatement {
+    fn impl_stmt(&self, ident: Atom, methods: &[StructMethod]) -> TypedStatement {
         let methods = methods
             .iter()
             .map(|method| {
@@ -181,14 +183,14 @@ impl Checker {
             })
             .collect::<Vec<_>>();
 
-        let stmt = Statement::Impl {
-            ident: ident.to_string(),
-            methods: methods.clone(),
-        };
-
         let scope = self.scope.borrow();
         let resolver = scope.type_resolver();
-        resolver.add_impl(resolver.resolve_alias(ident).unwrap(), methods);
+        resolver.add_impl(resolver.resolve_alias(&ident).unwrap(), methods.clone());
+
+        let stmt = Statement::Impl {
+            ident: ident,
+            methods,
+        };
 
         TypedStatement {
             effects: vec![],
@@ -198,7 +200,7 @@ impl Checker {
 
     pub fn struct_declaration(
         &self,
-        name: &String,
+        name: Atom,
         fields: &[StructField],
         is_pub: bool,
     ) -> TypedStatement {
@@ -223,7 +225,7 @@ impl Checker {
         };
 
         let stmt = Statement::StructDeclaration {
-            name: name.to_string(),
+            name: name.clone(),
             fields: fields.clone(),
             is_pub,
         };
@@ -240,7 +242,7 @@ impl Checker {
 
     pub fn var_declaration(
         &self,
-        name: &String,
+        name: Atom,
         expr: &AstExpression,
         is_mut: bool,
         ty: &Option<AstType>,
@@ -254,15 +256,11 @@ impl Checker {
 
         self.scope
             .borrow()
-            .insert(name.to_string(), expr.ty.clone(), is_mut);
+            .insert(name.clone(), expr.ty.clone(), is_mut);
 
         let expr_effects = expr.effects.clone();
 
-        let stmt = Statement::VariableDeclaration {
-            name: name.to_string(),
-            is_mut,
-            expr,
-        };
+        let stmt = Statement::VariableDeclaration { name, is_mut, expr };
 
         TypedStatement {
             effects: expr_effects,
@@ -272,8 +270,8 @@ impl Checker {
 
     pub fn fn_declaration(
         &self,
-        name: &String,
-        parameters: &Vec<(String, AstType)>,
+        name: Atom,
+        parameters: &Vec<(Atom, AstType)>,
         body: Option<&AstExpression>,
         return_type: &AstType,
         effects: &[Effect],

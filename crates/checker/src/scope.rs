@@ -1,5 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
+use string_cache::DefaultAtom as Atom;
 use tcast::{namespace::Namespace, types::Type};
 
 use crate::resolver::TypeResolver;
@@ -7,9 +7,9 @@ use crate::resolver::TypeResolver;
 #[derive(Debug, Clone, Default)]
 pub struct Scope {
     enclosing: Option<Rc<Scope>>,
-    values: RefCell<HashMap<String, ScopeValueData>>,
+    values: RefCell<HashMap<Atom, ScopeValueData>>,
     resolver: Rc<TypeResolver>,
-    namespaces: Rc<RefCell<HashMap<String, Rc<Namespace>>>>,
+    namespaces: Rc<RefCell<HashMap<Atom, Rc<Namespace>>>>,
 }
 
 impl Scope {
@@ -31,14 +31,14 @@ impl Scope {
         }
     }
 
-    pub fn insert(&self, ident: String, ty: Type, is_mut: bool) -> bool {
+    pub fn insert(&self, ident: Atom, ty: Type, is_mut: bool) -> bool {
         self.values
             .borrow_mut()
             .insert(ident, ScopeValueData { ty, is_mut })
             .is_some()
     }
 
-    pub fn get(&self, ident: &str) -> Option<ScopeValueData> {
+    pub fn get(&self, ident: &Atom) -> Option<ScopeValueData> {
         self.values.borrow().get(ident).cloned().or_else(|| {
             self.enclosing
                 .as_ref()
@@ -47,11 +47,11 @@ impl Scope {
         })
     }
 
-    pub fn get_namespace(&self, name: &str) -> Option<Rc<Namespace>> {
+    pub fn get_namespace(&self, name: &Atom) -> Option<Rc<Namespace>> {
         self.namespaces.borrow().get(name).cloned()
     }
 
-    pub fn create_namespace(&self, name: String) -> Option<Rc<Namespace>> {
+    pub fn create_namespace(&self, name: Atom) -> Option<Rc<Namespace>> {
         let ns = Rc::new(Namespace::default());
 
         if self
@@ -70,7 +70,7 @@ impl Scope {
         &self.resolver
     }
 
-    pub fn unwrap_values(self) -> RefCell<HashMap<String, ScopeValueData>> {
+    pub fn unwrap_values(self) -> RefCell<HashMap<Atom, ScopeValueData>> {
         self.values
     }
 }

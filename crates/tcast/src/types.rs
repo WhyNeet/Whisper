@@ -1,6 +1,6 @@
-use std::mem;
-
 use common::effects::Effect;
+use std::mem;
+use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq)]
 pub enum Type {
@@ -17,12 +17,12 @@ pub enum Type {
         effects: Vec<Effect>,
     },
     Struct {
-        alias: String,
-        fields: Vec<(String, Type)>,
+        alias: Atom,
+        fields: Vec<(Atom, Type)>,
     },
     Namespace {
-        alias: String,
-        fields: Vec<(String, Type)>,
+        alias: Atom,
+        fields: Vec<(Atom, Type)>,
     },
     Infer {
         candidate: Box<Type>,
@@ -87,14 +87,14 @@ impl Type {
         }
     }
 
-    pub fn as_struct(self) -> Option<(String, Vec<(String, Type)>)> {
+    pub fn as_struct(self) -> Option<(Atom, Vec<(Atom, Type)>)> {
         match self {
             Self::Struct { fields, alias } => Some((alias, fields)),
             _ => None,
         }
     }
 
-    pub fn as_namespace(self) -> Option<(String, Vec<(String, Type)>)> {
+    pub fn as_namespace(self) -> Option<(Atom, Vec<(Atom, Type)>)> {
         match self {
             Self::Namespace { fields, alias } => Some((alias, fields)),
             _ => None,

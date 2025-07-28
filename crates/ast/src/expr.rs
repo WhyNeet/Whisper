@@ -3,6 +3,7 @@ use common::{
     literal::LiteralValue,
     ops::{BinaryOperator, UnaryOperator},
 };
+use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -16,7 +17,7 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Grouping(Box<Expression>),
-    Identifier(String),
+    Identifier(Atom),
     Literal(Literal),
     Block {
         stmts: Vec<Statement>,
@@ -28,16 +29,16 @@ pub enum Expression {
     },
     MemberAccess {
         expr: Box<Expression>,
-        ident: String,
+        ident: Atom,
     },
     StructInit {
         use_default: bool,
         ty: Type,
-        fields: Vec<(String, Expression)>,
+        fields: Vec<(Atom, Expression)>,
     },
     MethodAccess {
         expr: Box<Expression>,
-        ident: String,
+        ident: Atom,
     },
     Assignment {
         assignee: Box<Expression>,

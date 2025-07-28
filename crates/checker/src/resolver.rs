@@ -1,11 +1,12 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use string_cache::DefaultAtom as Atom;
 use tcast::stmt::StructMethod;
 use tcast::types::Type;
 
 #[derive(Debug, Default)]
 pub struct TypeResolver {
     enclosing: Option<Rc<TypeResolver>>,
-    alias_mapping: RefCell<HashMap<String, Type>>,
+    alias_mapping: RefCell<HashMap<Atom, Type>>,
     impls: RefCell<HashMap<Type, Vec<StructImpl>>>,
 }
 
@@ -22,16 +23,16 @@ impl TypeResolver {
         let mut alias_mapping = HashMap::new();
 
         let pairs = [
-            ("UInt", Type::UInt),
-            ("Int", Type::Int),
-            ("Float", Type::Float),
-            ("Bool", Type::Bool),
-            ("Char", Type::Char),
-            ("String", Type::String),
-            ("Unit", Type::Unit),
+            (Atom::from("UInt"), Type::UInt),
+            (Atom::from("Int"), Type::Int),
+            (Atom::from("Float"), Type::Float),
+            (Atom::from("Bool"), Type::Bool),
+            (Atom::from("Char"), Type::Char),
+            (Atom::from("String"), Type::String),
+            (Atom::from("Unit"), Type::Unit),
         ];
         for (name, ty) in pairs {
-            alias_mapping.insert(name.to_string(), ty);
+            alias_mapping.insert(name, ty);
         }
 
         Self {
@@ -64,7 +65,7 @@ impl TypeResolver {
             .or_else(|| self.enclosing.as_ref().and_then(|r| r.resolve_impl(ty)))
     }
 
-    pub fn resolve_alias(&self, alias: &str) -> Option<Type> {
+    pub fn resolve_alias(&self, alias: &Atom) -> Option<Type> {
         self.alias_mapping
             .borrow()
             .get(alias)
@@ -72,7 +73,7 @@ impl TypeResolver {
             .or_else(|| self.enclosing.as_ref().and_then(|r| r.resolve_alias(alias)))
     }
 
-    pub fn insert(&self, alias: String, ty: Type) -> bool {
+    pub fn insert(&self, alias: Atom, ty: Type) -> bool {
         self.alias_mapping.borrow_mut().insert(alias, ty).is_some()
     }
 }

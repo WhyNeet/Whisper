@@ -1,6 +1,6 @@
-use common::{annotations::Annotation, effects::Effect};
-
 use crate::{expr::TypedExpression, types::Type};
+use common::{annotations::Annotation, effects::Effect};
+use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
 pub struct TypedStatement {
@@ -12,26 +12,26 @@ pub struct TypedStatement {
 pub enum Statement {
     Expression(TypedExpression),
     FunctionDeclaration {
-        name: String,
+        name: Atom,
         return_type: Type,
-        parameters: Vec<(String, Type)>,
+        parameters: Vec<(Atom, Type)>,
         body: Option<TypedExpression>,
         effects: Vec<Effect>,
         is_extern: bool,
         is_pub: bool,
     },
     VariableDeclaration {
-        name: String,
+        name: Atom,
         is_mut: bool,
         expr: TypedExpression,
     },
     StructDeclaration {
-        name: String,
+        name: Atom,
         fields: Vec<StructField>,
         is_pub: bool,
     },
     Impl {
-        ident: String,
+        ident: Atom,
         methods: Vec<StructMethod>,
     },
     Annotated {
@@ -45,16 +45,16 @@ pub enum Statement {
 
 #[derive(Debug, Clone)]
 pub struct StructField {
-    pub name: String,
+    pub name: Atom,
     pub ty: Type,
     pub is_pub: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct StructMethod {
-    pub name: String,
+    pub name: Atom,
     pub return_type: Type,
-    pub parameters: Vec<(String, Type)>,
+    pub parameters: Vec<(Atom, Type)>,
     pub body: TypedExpression,
     pub effects: Vec<Effect>,
     pub annotations: Vec<Annotation>,

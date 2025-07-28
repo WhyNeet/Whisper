@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use string_cache::DefaultAtom as Atom;
 
 use common::{
     effects::Effect,
@@ -28,7 +29,7 @@ pub enum Expression {
         right: Box<TypedExpression>,
     },
     Grouping(Box<TypedExpression>),
-    Identifier(String),
+    Identifier(Atom),
     Literal(Literal),
     Block {
         stmts: Vec<TypedStatement>,
@@ -40,23 +41,23 @@ pub enum Expression {
     },
     MemberAccess {
         expr: Box<TypedExpression>,
-        ident: String,
+        ident: Atom,
     },
     StructInit {
         use_default: bool,
         ty: Type,
-        fields: Vec<(String, TypedExpression)>,
+        fields: Vec<(Atom, TypedExpression)>,
     },
     MethodAccess {
         expr: Box<TypedExpression>,
-        ident: String,
+        ident: Atom,
     },
     Assignment {
         assignee: Box<TypedExpression>,
         expr: Box<TypedExpression>,
     },
     Namespace {
-        alias: String,
+        alias: Atom,
         namespace: Rc<Namespace>,
     },
 }

@@ -1,16 +1,17 @@
 use crate::ast::expr::Expression;
+use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
 pub enum Statement {
     FunctionDeclaration {
         is_async: bool,
-        ident: String,
-        params: Vec<String>,
+        ident: Atom,
+        params: Vec<Atom>,
         body: Vec<Statement>,
     },
     VariableDeclaration {
         is_const: bool,
-        ident: String,
+        ident: Atom,
         expression: Expression,
     },
     Block(Vec<Statement>),

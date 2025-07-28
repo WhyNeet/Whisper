@@ -1,11 +1,13 @@
+use string_cache::DefaultAtom as Atom;
+
 #[derive(Debug, Clone)]
 pub enum Type {
-    Alias(String),
+    Alias(Atom),
 }
 
-impl From<&str> for Type {
-    fn from(value: &str) -> Self {
-        Self::Alias(value.to_string())
+impl From<Atom> for Type {
+    fn from(value: Atom) -> Self {
+        Self::Alias(value)
     }
 }
 

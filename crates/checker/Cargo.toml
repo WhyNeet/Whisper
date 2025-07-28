@@ -7,3 +7,4 @@ edition = "2024"
 ast = { path = "../ast" }
 tcast = { path = "../tcast" }
 common = { path = "../common" }
+string_cache = "0.8.9"

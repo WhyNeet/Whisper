@@ -1,6 +1,7 @@
 pub mod resolver;
 
 use std::{cell::RefCell, rc::Rc};
+use string_cache::DefaultAtom as Atom;
 
 use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator};
 use tcast::{
@@ -36,7 +37,7 @@ impl TypedAstTransformer {
 
         if let Some(ref entrypoint) = module.entrypoint {
             stmts.push(Statement::Expression(Expression::FunctionCall {
-                expr: Box::new(Expression::Identifier(entrypoint.to_string())),
+                expr: Box::new(Expression::Identifier(entrypoint.clone())),
                 args: vec![],
             }));
         }
@@ -64,13 +65,13 @@ impl TypedAstTransformer {
                 ..
             } => {
                 if let Some(body) = body {
-                    vec![self.fn_declaration(name, parameters, body, *is_pub)]
+                    vec![self.fn_declaration(name.clone(), parameters, body, *is_pub)]
                 } else {
                     vec![]
                 }
             }
             TStatement::VariableDeclaration { name, is_mut, expr } => {
-                self.var_declaration(name, expr, *is_mut)
+                self.var_declaration(name.clone(), expr, *is_mut)
             }
             TStatement::StructDeclaration {
                 name,
@@ -87,13 +88,13 @@ impl TypedAstTransformer {
                         alias: name.clone(),
                     },
                 );
-                vec![self.struct_declaration(name, fields, *is_pub)]
+                vec![self.struct_declaration(name.clone(), fields, *is_pub)]
             }
             TStatement::Impl { ident, methods } => methods
                 .iter()
                 .map(|method| {
                     self.fn_declaration(
-                        &format!("{ident}_{}", method.name),
+                        Atom::from(format!("{ident}_{}", method.name)),
                         &method.parameters,
                         &method.body,
                         method.is_pub,
@@ -115,12 +116,12 @@ impl TypedAstTransformer {
         }
     }
 
-    fn struct_declaration(&self, name: &String, fields: &[StructField], is_pub: bool) -> Statement {
+    fn struct_declaration(&self, name: Atom, fields: &[StructField], is_pub: bool) -> Statement {
         let body = fields
             .iter()
             .map(|field| Statement::Assignment {
                 target: Expression::MemberAccess {
-                    expr: Box::new(Expression::Identifier("this".to_string())),
+                    expr: Box::new(Expression::Identifier(Atom::from("this"))),
                     ident: field.name.clone(),
                 },
                 expr: Expression::Identifier(field.name.clone()),
@@ -129,7 +130,7 @@ impl TypedAstTransformer {
 
         let stmt = Statement::FunctionDeclaration {
             is_async: false,
-            ident: name.to_string(),
+            ident: name,
             params: fields.iter().map(|field| field.name.clone()).collect(),
             body,
         };
@@ -141,17 +142,12 @@ impl TypedAstTransformer {
         }
     }
 
-    fn var_declaration(
-        &self,
-        name: &String,
-        expr: &TypedExpression,
-        is_mut: bool,
-    ) -> Vec<Statement> {
+    fn var_declaration(&self, name: Atom, expr: &TypedExpression, is_mut: bool) -> Vec<Statement> {
         let (mut tail, expr) = self.expression(expr);
 
         tail.push(Statement::VariableDeclaration {
             is_const: !is_mut,
-            ident: name.to_string(),
+            ident: name,
             expression: expr,
         });
 
@@ -160,8 +156,8 @@ impl TypedAstTransformer {
 
     fn fn_declaration(
         &self,
-        name: &String,
-        parameters: &[(String, Type)],
+        name: Atom,
+        parameters: &[(Atom, Type)],
         body: &TypedExpression,
         is_pub: bool,
     ) -> Statement {
@@ -173,11 +169,8 @@ impl TypedAstTransformer {
 
         let stmt = Statement::FunctionDeclaration {
             is_async: false,
-            ident: name.to_string(),
-            params: parameters
-                .iter()
-                .map(|(param, _)| param.to_string())
-                .collect(),
+            ident: name,
+            params: parameters.iter().map(|(param, _)| param.clone()).collect(),
             body,
         };
 
@@ -200,7 +193,7 @@ impl TypedAstTransformer {
                     LiteralValue::Unit => Literal::Void,
                 }),
             ),
-            TExpression::Identifier(ident) => (vec![], Expression::Identifier(ident.to_string())),
+            TExpression::Identifier(ident) => (vec![], Expression::Identifier(ident.clone())),
             TExpression::Grouping(expr) => {
                 let (tail, expr) = self.expression(expr);
                 (tail, Expression::Grouping(Box::new(expr)))
@@ -255,7 +248,7 @@ impl TypedAstTransformer {
                     tail,
                     Expression::MemberAccess {
                         expr: Box::new(expr),
-                        ident: ident.to_string(),
+                        ident: ident.clone(),
                     },
                 )
             }

@@ -9,6 +9,7 @@ use core::unreachable;
 use lexer::stream::TokenStream;
 use lexer::token::{Keyword, LiteralKind, Token, TokenKind};
 use std::mem;
+use string_cache::DefaultAtom as Atom;
 
 pub struct Parser<'a> {
     token_stream: TokenStream<'a>,
@@ -101,7 +102,7 @@ impl<'a> Parser<'a> {
         let name = self
             .matches(TokenKind::Ident)
             .expect("Expected namespace identifier");
-        let name = self.token_stream.source()[name.start..name.end].to_string();
+        let name = Atom::from(&self.token_stream.source()[name.start..name.end]);
 
         self.matches(TokenKind::OpenBrace)
             .expect("Expected opening brace");
@@ -119,7 +120,7 @@ impl<'a> Parser<'a> {
         let ident = self
             .matches(TokenKind::Ident)
             .expect("Expected struct identifier");
-        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+        let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
 
         self.matches(TokenKind::OpenBrace)
             .expect("Expected opening brace");
@@ -135,7 +136,7 @@ impl<'a> Parser<'a> {
             let effects = self.effects();
 
             let name = self.matches(TokenKind::Ident).expect("Expected identifier");
-            let name = self.token_stream.source()[name.start..name.end].to_string();
+            let name = Atom::from(&self.token_stream.source()[name.start..name.end]);
 
             self.matches(TokenKind::OpenParen)
                 .expect("Expected opening parenthesis");
@@ -145,9 +146,9 @@ impl<'a> Parser<'a> {
 
             let return_type = if self.matches(TokenKind::RArrow).is_some() {
                 let ty = self.matches(TokenKind::Ident).expect("Expected type");
-                self.token_stream.source()[ty.start..ty.end].into()
+                Atom::from(&self.token_stream.source()[ty.start..ty.end]).into()
             } else {
-                Type::from("Unit")
+                Type::from(Atom::from("Unit"))
             };
 
             self.matches(TokenKind::Eq)
@@ -173,7 +174,7 @@ impl<'a> Parser<'a> {
 
     fn struct_decl(&mut self, is_pub: bool) -> Statement {
         let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
-        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+        let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
 
         self.matches(TokenKind::OpenBrace)
             .expect("Expected opening brace");
@@ -184,14 +185,14 @@ impl<'a> Parser<'a> {
             let is_pub = self.matches(TokenKind::Keyword(Keyword::Pub)).is_some();
 
             let name = self.matches(TokenKind::Ident).expect("Expected identifier");
-            let name = self.token_stream.source()[name.start..name.end].to_string();
+            let name = Atom::from(&self.token_stream.source()[name.start..name.end]);
 
             self.matches(TokenKind::Colon).expect("Expected colon");
 
             let ty = self
                 .matches(TokenKind::Ident)
                 .expect("Expected type identifier");
-            let ty = self.token_stream.source()[ty.start..ty.end].into();
+            let ty = Atom::from(&self.token_stream.source()[ty.start..ty.end]).into();
 
             self.matches(TokenKind::Semi).expect("Expected semicolon");
 
@@ -209,15 +210,15 @@ impl<'a> Parser<'a> {
         let is_mut = self.matches(TokenKind::Keyword(Keyword::Mut)).is_some();
 
         let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
-        let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+        let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
 
         let ty = if self.matches(TokenKind::Colon).is_some() {
             let ident = self
                 .matches(TokenKind::Ident)
                 .expect("Expected type identifier");
-            Some(Type::from(
+            Some(Type::from(Atom::from(
                 &self.token_stream.source()[ident.start..ident.end],
-            ))
+            )))
         } else {
             None
         };
@@ -270,7 +271,7 @@ impl<'a> Parser<'a> {
         let effects = self.effects();
 
         let name = self.matches(TokenKind::Ident).expect("Expected identifier");
-        let name = self.token_stream.source()[name.start..name.end].to_string();
+        let name = Atom::from(&self.token_stream.source()[name.start..name.end]);
 
         self.matches(TokenKind::OpenParen)
             .expect("Expected left parenthesis");
@@ -281,9 +282,9 @@ impl<'a> Parser<'a> {
 
         let return_type = if self.matches(TokenKind::RArrow).is_some() {
             let ty = self.matches(TokenKind::Ident).expect("Expected type");
-            self.token_stream.source()[ty.start..ty.end].into()
+            Atom::from(&self.token_stream.source()[ty.start..ty.end]).into()
         } else {
-            Type::from("Unit")
+            Type::from(Atom::from("Unit"))
         };
 
         let body = self.matches(TokenKind::Eq).map(|_| self.expression());
@@ -301,7 +302,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn fn_params(&mut self) -> Vec<(String, Type)> {
+    fn fn_params(&mut self) -> Vec<(Atom, Type)> {
         let mut params = vec![];
 
         if self.matches_peek(TokenKind::Ident).is_some() {
@@ -315,14 +316,14 @@ impl<'a> Parser<'a> {
         params
     }
 
-    fn fn_param(&mut self) -> (String, Type) {
+    fn fn_param(&mut self) -> (Atom, Type) {
         let identifier = self.matches(TokenKind::Ident).expect("Expected identifier");
-        let identifier = self.token_stream.source()[identifier.start..identifier.end].to_string();
+        let identifier = Atom::from(&self.token_stream.source()[identifier.start..identifier.end]);
 
         self.matches(TokenKind::Colon).expect("Expected colon");
 
         let ty = self.matches(TokenKind::Ident).expect("Expected type");
-        let ty = self.token_stream.source()[ty.start..ty.end].into();
+        let ty = Atom::from(&self.token_stream.source()[ty.start..ty.end]).into();
         (identifier, ty)
     }
 
@@ -449,7 +450,7 @@ impl<'a> Parser<'a> {
 
         while self.matches(TokenKind::Dot).is_some() {
             let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
-            let ident = self.token_stream.source()[ident.start..ident.end].to_string();
+            let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
 
             expr = Expression::MemberAccess {
                 expr: Box::new(expr),
@@ -471,7 +472,7 @@ impl<'a> Parser<'a> {
                     LiteralKind::Bool => {
                         let lexeme = &self.token_stream.source()[token.start..token.end];
                         Literal {
-                            ty: Type::from("Bool"),
+                            ty: Type::from(Atom::from("Bool")),
                             value: LiteralValue::Bool(lexeme == "true"),
                         }
                     }
@@ -481,7 +482,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::from("String"),
+                            ty: Type::from(Atom::from("String")),
                             value: LiteralValue::String(
                                 self.token_stream.source()[token.start..token.end].to_string(),
                             ),
@@ -494,7 +495,7 @@ impl<'a> Parser<'a> {
                         }
 
                         Literal {
-                            ty: Type::from("Int"),
+                            ty: Type::from(Atom::from("Int")),
                             value: LiteralValue::Integer(
                                 self.token_stream.source()[token.start..token.end]
                                     .parse()
@@ -503,7 +504,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                     LiteralKind::Float { .. } => Literal {
-                        ty: Type::from("Float"),
+                        ty: Type::from(Atom::from("Float")),
                         value: LiteralValue::Float(
                             self.token_stream.source()[token.start..token.end]
                                 .parse()
@@ -526,12 +527,12 @@ impl<'a> Parser<'a> {
             if self.matches_peek(TokenKind::OpenBrace).is_some() {
                 self.struct_init(token, false)
             } else if self.matches_peek(TokenKind::ColonColon).is_some() {
-                let ident = self.token_stream.source()[token.start..token.end].to_string();
+                let ident = Atom::from(&self.token_stream.source()[token.start..token.end]);
                 let mut expr = Expression::Identifier(ident);
 
                 while self.matches(TokenKind::ColonColon).is_some() {
                     let token = self.matches(TokenKind::Ident).expect("Expected identifier");
-                    let ident = self.token_stream.source()[token.start..token.end].to_string();
+                    let ident = Atom::from(&self.token_stream.source()[token.start..token.end]);
                     expr = Expression::MethodAccess {
                         expr: Box::new(expr),
                         ident,
@@ -540,7 +541,7 @@ impl<'a> Parser<'a> {
 
                 expr
             } else {
-                let ident = self.token_stream.source()[token.start..token.end].to_string();
+                let ident = Atom::from(&self.token_stream.source()[token.start..token.end]);
                 Expression::Identifier(ident)
             }
         } else {
@@ -557,7 +558,7 @@ impl<'a> Parser<'a> {
         if self.matches(TokenKind::CloseBrace).is_none() {
             while self.matches(TokenKind::CloseBrace).is_none() {
                 let name = self.matches(TokenKind::Ident).expect("Expected field name");
-                let name = self.token_stream.source()[name.start..name.end].to_string();
+                let name = Atom::from(&self.token_stream.source()[name.start..name.end]);
                 self.matches(TokenKind::Colon).expect("Expected colon");
                 let expr = self.expression();
 
@@ -573,7 +574,7 @@ impl<'a> Parser<'a> {
 
         Expression::StructInit {
             use_default,
-            ty: self.token_stream.source()[name.start..name.end].into(),
+            ty: Atom::from(&self.token_stream.source()[name.start..name.end]).into(),
             fields,
         }
     }

@@ -18,6 +18,7 @@ pub enum Statement {
         body: Option<TypedExpression>,
         effects: Vec<Effect>,
         is_extern: bool,
+        is_pub: bool,
     },
     VariableDeclaration {
         name: String,
@@ -27,6 +28,7 @@ pub enum Statement {
     StructDeclaration {
         name: String,
         fields: Vec<StructField>,
+        is_pub: bool,
     },
     Impl {
         ident: String,

@@ -1,0 +1,11 @@
+[package]
+name = "pipeline"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
+checker = { path = "../checker" }
+js = { path = "../js" }
+tcast = { path = "../tcast" }

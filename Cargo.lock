@@ -41,6 +41,9 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
+dependencies = [
+ "string_cache",
+]
 
 [[package]]
 name = "js"
@@ -117,6 +120,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
 dependencies = [
  "siphasher",
+]
+
+[[package]]
+name = "pipeline"
+version = "0.1.0"
+dependencies = [
+ "checker",
+ "js",
+ "lexer",
+ "parser",
+ "tcast",
 ]
 
 [[package]]
@@ -296,8 +310,5 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 name = "wrc"
 version = "0.1.0"
 dependencies = [
- "checker",
- "js",
- "lexer",
- "parser",
+ "pipeline",
 ]

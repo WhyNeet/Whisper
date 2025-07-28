@@ -14,7 +14,7 @@ pub enum Statement {
         parameters: Vec<(String, Type)>,
         body: Option<Expression>,
         effects: Vec<Effect>,
-        annotations: Vec<Annotation>,
+        is_pub: bool,
     },
     VariableDeclaration {
         name: String,
@@ -25,6 +25,7 @@ pub enum Statement {
     StructDeclaration {
         name: String,
         fields: Vec<StructField>,
+        is_pub: bool,
     },
     Impl {
         ident: String,

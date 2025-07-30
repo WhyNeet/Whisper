@@ -1,0 +1,20 @@
+module = { statement } ;
+
+statement = expr_stmt | declaration_stmt | impl_stmt | import_stmt ;
+
+expr_stmt = expression ";" ;
+
+declaration_stmt = fn_declaration | var_declaration | struct_declaration ;
+
+fn_declaration = [ "pub" ] [ "extern" ] "fn" [ "{" [ IDENTIFIER ] { "," IDENTIFIER } "}" ] IDENTIFIER "(" fn_params ")" [ "->" TYPE ] [ "=" expression ] ;
+fn_params = [ IDENTIFIER ":" TYPE ] { "," IDENTIFIER ":" TYPE } ;
+
+var_declaration = "let" [ "mut" ] IDENTIFIER [ ":" IDENTIFIER ] "=" expression ;
+
+struct_declaration = [ "pub" ] "struct" IDENTIFIER "{" { [ "pub" ] IDENTIFIER [ ":" TYPE ] ";" } "}" ;
+
+impl_stmt = "impl" IDENTIFIER "{"
+  { [ "pub" ] "fn" IDENTIFIER "(" fn_params ")" [ "->" TYPE ] "=" expression }
+"}" ;
+
+import_stmt = "import" IDENTIFIER { "::" IDENTIFIER } ";"

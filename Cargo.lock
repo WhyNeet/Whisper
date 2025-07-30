@@ -126,10 +126,14 @@ dependencies = [
 name = "pipeline"
 version = "0.1.0"
 dependencies = [
+ "ast",
  "checker",
+ "common",
  "js",
  "lexer",
  "parser",
+ "resolver",
+ "string_cache",
  "tcast",
 ]
 
@@ -164,6 +168,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7251471db004e509f4e75a62cca9435365b5ec7bcdff530d612ac7c87c44a792"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "resolver"
+version = "0.1.0"
+dependencies = [
+ "ast",
+ "common",
 ]
 
 [[package]]

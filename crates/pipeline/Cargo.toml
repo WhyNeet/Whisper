@@ -7,5 +7,9 @@ edition = "2024"
 lexer = { path = "../lexer" }
 parser = { path = "../parser" }
 checker = { path = "../checker" }
+resolver = { path = "../resolver" }
 js = { path = "../js" }
 tcast = { path = "../tcast" }
+common = { path = "../common" }
+string_cache = "0.8.9"
+ast = { path = "../ast" }

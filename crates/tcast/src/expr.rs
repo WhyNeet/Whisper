@@ -5,9 +5,10 @@ use common::{
     effects::Effect,
     literal::LiteralValue,
     ops::{BinaryOperator, UnaryOperator},
+    types::Type,
 };
 
-use crate::{namespace::Namespace, stmt::TypedStatement, types::Type};
+use crate::{namespace::Namespace, stmt::TypedStatement};
 
 #[derive(Debug, Clone)]
 pub struct TypedExpression {

@@ -1,4 +1,4 @@
-use common::effects::Effect;
+use crate::effects::Effect;
 use std::mem;
 use string_cache::DefaultAtom as Atom;
 
@@ -119,17 +119,3 @@ impl Type {
         }
     }
 }
-
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// pub struct TypeId(u64);
-
-// static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-// impl TypeId {
-//     pub fn sequential() -> Self {
-//         let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-//         Self(counter)
-//     }
-// }
-
-// pub const UNIT_TYPE_ID: TypeId = TypeId(13);

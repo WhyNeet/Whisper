@@ -3,4 +3,3 @@ pub mod module;
 pub mod namespace;
 pub mod ops;
 pub mod stmt;
-pub mod types;

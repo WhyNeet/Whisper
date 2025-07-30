@@ -1,4 +1,4 @@
-use crate::types::Type;
+use common::types::Type;
 use std::cell::RefCell;
 use string_cache::DefaultAtom as Atom;
 

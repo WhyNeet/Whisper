@@ -1,6 +1,6 @@
 use std::fmt;
 
-use tcast::types::Type;
+use common::types::Type;
 
 pub struct TypeWrapper(Type);
 

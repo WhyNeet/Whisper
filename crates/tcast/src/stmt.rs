@@ -1,5 +1,7 @@
-use crate::{expr::TypedExpression, types::Type};
+use crate::expr::TypedExpression;
 use common::effects::Effect;
+use common::module::ModuleId;
+use common::types::Type;
 use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
@@ -16,6 +18,7 @@ pub enum Statement {
     StructDeclaration(Box<StructDeclaration>),
     Impl(Box<Impl>),
     Namespace(Box<Namespace>),
+    Import(Box<Import>),
 }
 
 #[derive(Debug, Clone)]
@@ -59,4 +62,9 @@ pub struct Impl {
 #[derive(Debug, Clone)]
 pub struct Namespace {
     pub stmts: Vec<TypedStatement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub module_id: ModuleId,
 }

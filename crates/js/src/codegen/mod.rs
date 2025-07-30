@@ -68,7 +68,10 @@ impl Codegen {
             }
             Statement::Export(stmt) => {
                 let stmt = Self::statement(*stmt);
-                format!("export {stmt}")
+                format!("export {stmt};")
+            }
+            Statement::Import(import) => {
+                format!("import*as {} from\"{}\";", import.name, import.path)
             }
         }
     }

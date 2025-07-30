@@ -1,6 +1,7 @@
+use common::types::Type;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use string_cache::DefaultAtom as Atom;
-use tcast::{stmt::FunctionDeclaration, types::Type};
+use tcast::stmt::FunctionDeclaration;
 
 #[derive(Debug, Default)]
 pub struct TypeResolver {

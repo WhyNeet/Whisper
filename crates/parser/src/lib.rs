@@ -41,7 +41,10 @@ impl<'a> Parser<'a> {
             stmts.push(self.statement());
         }
 
-        Module { stmts }
+        Module {
+            stmts,
+            dependencies: vec![],
+        }
     }
 
     fn statement(&mut self) -> Statement {
@@ -118,7 +121,10 @@ impl<'a> Parser<'a> {
 
         self.matches(TokenKind::Semi).expect("Expected semicolon");
 
-        Statement::Import(Box::new(Import { path }))
+        Statement::Import(Box::new(Import {
+            path,
+            module_id: None,
+        }))
     }
 
     fn namespace_stmt(&mut self) -> Statement {

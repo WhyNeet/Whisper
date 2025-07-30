@@ -1,6 +1,7 @@
+use common::types::Type;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use string_cache::DefaultAtom as Atom;
-use tcast::{namespace::Namespace, types::Type};
+use tcast::namespace::Namespace;
 
 use crate::resolver::TypeResolver;
 
@@ -31,6 +32,10 @@ impl Scope {
         }
     }
 
+    pub fn is_root(&self) -> bool {
+        self.enclosing.is_none()
+    }
+
     pub fn insert(&self, ident: Atom, ty: Type, is_mut: bool) -> bool {
         self.values
             .borrow_mut()
@@ -48,7 +53,11 @@ impl Scope {
     }
 
     pub fn get_namespace(&self, name: &Atom) -> Option<Rc<Namespace>> {
-        self.namespaces.borrow().get(name).cloned()
+        self.namespaces.borrow().get(name).cloned().or_else(|| {
+            self.enclosing
+                .as_ref()
+                .and_then(|scope| scope.get_namespace(name))
+        })
     }
 
     pub fn create_namespace(&self, name: Atom) -> Option<Rc<Namespace>> {

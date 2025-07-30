@@ -1,17 +1,18 @@
 pub mod resolver;
 
-use std::{cell::RefCell, rc::Rc};
+use common::{
+    literal::LiteralValue, module::ModuleRegistry, ops::UnaryOperator as LangUnaryOperator,
+    types::Type,
+};
+use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 use string_cache::DefaultAtom as Atom;
-
-use common::{literal::LiteralValue, ops::UnaryOperator as LangUnaryOperator};
 use tcast::{
     expr::{Expression as TExpression, TypedExpression},
     module::Module,
     stmt::{
-        FunctionDeclaration, Statement as TStatement, StructDeclaration, TypedStatement,
+        FunctionDeclaration, Import, Statement as TStatement, StructDeclaration, TypedStatement,
         VariableDeclaration,
     },
-    types::Type,
 };
 
 use crate::{
@@ -20,17 +21,25 @@ use crate::{
         literal::Literal,
         ops::{BinaryOperator, UnaryOperator},
         program::Program,
-        stmt::Statement,
+        stmt::{Import as JsImport, Statement},
     },
     transformer::resolver::TypeResolver,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TypedAstTransformer {
     type_resolver: RefCell<Rc<TypeResolver>>,
+    registry: Arc<ModuleRegistry>,
 }
 
 impl TypedAstTransformer {
+    pub fn new(registry: Arc<ModuleRegistry>) -> Self {
+        Self {
+            type_resolver: Default::default(),
+            registry,
+        }
+    }
+
     pub fn run(&self, module: Module) -> Program {
         let mut stmts = vec![];
 
@@ -93,7 +102,27 @@ impl TypedAstTransformer {
                 })
                 .collect(),
             TStatement::Namespace { .. } => vec![],
+            TStatement::Import(import) => vec![self.import(*import)],
         }
+    }
+
+    fn import(&self, import: Import) -> Statement {
+        let Import { module_id } = import;
+
+        let module = self.registry.get(&module_id).unwrap().unwrap();
+
+        let path = module
+            .module_path
+            .iter()
+            .fold(PathBuf::new(), |mut acc, val| {
+                acc.push(val.as_ref());
+                acc
+            });
+
+        Statement::Import(Box::new(JsImport {
+            name: module.name.clone(),
+            path: Atom::from(path.to_str().unwrap()),
+        }))
     }
 
     fn struct_declaration(&self, str: StructDeclaration) -> Statement {

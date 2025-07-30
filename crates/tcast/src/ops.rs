@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
-use crate::types::Type;
 use common::ops::{BinaryOperator, UnaryOperator};
+use common::types::Type;
 
 pub struct TypedUnaryOperator(UnaryOperator);
 pub struct TypedBinaryOperator(BinaryOperator);

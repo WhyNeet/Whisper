@@ -1,7 +1,7 @@
 pub mod resolver;
 pub mod scope;
 
-use std::{cell::RefCell, collections::HashSet, iter, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, iter, rc::Rc, sync::Arc};
 use string_cache::DefaultAtom as Atom;
 
 use ast::{
@@ -12,17 +12,20 @@ use ast::{
         VariableDeclaration,
     },
 };
-use common::effects::Effect;
+use common::{
+    effects::Effect,
+    module::{ModuleRegistry, ModuleSymbol, SymbolTable, Visibility},
+    types::Type as TcAstType,
+};
 use tcast::{
     expr::{Expression, Literal, TypedExpression},
     module::Module,
     ops::{TypedBinaryOperator, TypedUnaryOperator},
     stmt::{
-        FunctionDeclaration as TFunctionDeclaration, Impl as TImpl, Namespace as TNamespace,
-        Statement, StructDeclaration as TStructDeclaration, StructField as TStructField,
-        TypedStatement, VariableDeclaration as TVariableDeclaration,
+        FunctionDeclaration as TFunctionDeclaration, Impl as TImpl, Import as TImport,
+        Namespace as TNamespace, Statement, StructDeclaration as TStructDeclaration,
+        StructField as TStructField, TypedStatement, VariableDeclaration as TVariableDeclaration,
     },
-    types::Type as TcAstType,
 };
 
 use crate::scope::{Scope, ScopeValueData};
@@ -31,19 +34,22 @@ use crate::scope::{Scope, ScopeValueData};
 pub struct Checker {
     scope: RefCell<Rc<Scope>>,
     main_fn: RefCell<Option<Atom>>,
+    symbol_table: SymbolTable,
+    registry: Arc<ModuleRegistry>,
 }
 
 impl Checker {
-    pub fn new() -> Self {
+    pub fn new(registry: Arc<ModuleRegistry>) -> Self {
         Self {
             scope: RefCell::new(Rc::new(Scope::root())),
+            registry,
             ..Default::default()
         }
     }
 }
 
 impl Checker {
-    pub fn run(&self, module: AstModule) -> Module {
+    pub fn run(self, module: AstModule) -> Module {
         let mut stmts = vec![];
 
         for stmt in module.stmts.into_iter() {
@@ -53,6 +59,7 @@ impl Checker {
         Module {
             stmts,
             entrypoint: self.main_fn.take(),
+            symbols: self.symbol_table,
         }
     }
 
@@ -93,8 +100,30 @@ impl Checker {
         }
     }
 
-    fn import_stmt(&self, _import: Import) -> TypedStatement {
-        todo!()
+    fn import_stmt(&self, import: Import) -> TypedStatement {
+        let Import { module_id, .. } = import;
+        let module_id = module_id.unwrap();
+
+        let module = self.registry.get(&module_id).unwrap().unwrap();
+
+        let namespace = self
+            .scope
+            .borrow()
+            .create_namespace(module.name.clone())
+            .unwrap();
+
+        let f = |(name, symbol): (&Atom, &ModuleSymbol)| {
+            if symbol.visibility.is_public() {
+                namespace.add_member(name.clone(), symbol.ty.clone());
+            }
+        };
+
+        module.symbols.pairs(Box::new(f));
+
+        TypedStatement {
+            stmt: Statement::Import(Box::new(TImport { module_id })),
+            effects: vec![],
+        }
     }
 
     fn namespace_stmt(&self, namespace: Namespace) -> TypedStatement {
@@ -211,8 +240,27 @@ impl Checker {
                 .collect(),
         };
 
-        if self.scope.borrow().type_resolver().insert(name.clone(), ty) {
+        if self
+            .scope
+            .borrow()
+            .type_resolver()
+            .insert(name.clone(), ty.clone())
+        {
             panic!("Struct `{name}` is already defined in current scope.");
+        }
+
+        if self.scope.borrow().is_root() {
+            self.symbol_table.insert(
+                name.clone(),
+                ModuleSymbol {
+                    visibility: if is_pub {
+                        Visibility::Public
+                    } else {
+                        Visibility::Private
+                    },
+                    ty,
+                },
+            );
         }
 
         let stmt = Statement::StructDeclaration(Box::new(TStructDeclaration {
@@ -329,8 +377,26 @@ impl Checker {
             effects: effects.to_owned(),
         };
 
-        if self.scope.borrow().insert(name.clone(), fn_type, false) {
+        if self
+            .scope
+            .borrow()
+            .insert(name.clone(), fn_type.clone(), false)
+        {
             panic!("Function `{name}` is already defined.");
+        }
+
+        if self.scope.borrow().is_root() {
+            self.symbol_table.insert(
+                name.clone(),
+                ModuleSymbol {
+                    ty: fn_type,
+                    visibility: if is_pub {
+                        Visibility::Public
+                    } else {
+                        Visibility::Private
+                    },
+                },
+            );
         }
 
         let stmt = Statement::FunctionDeclaration(Box::new(TFunctionDeclaration {
@@ -534,11 +600,6 @@ impl Checker {
                     panic!("`{expr:?}` is not callable.")
                 };
 
-                let args = args
-                    .into_iter()
-                    .zip(fn_params.iter())
-                    .map(|(arg, ty)| self.expression(arg, Some(ty)))
-                    .collect::<Vec<_>>();
                 if args.len() != fn_params.len() {
                     panic!(
                         "Invalid number of arguments: expected {}, found {}",
@@ -546,6 +607,11 @@ impl Checker {
                         fn_params.len()
                     );
                 }
+                let args = args
+                    .into_iter()
+                    .zip(fn_params.iter())
+                    .map(|(arg, ty)| self.expression(arg, Some(ty)))
+                    .collect::<Vec<_>>();
 
                 for i in 0..args.len() {
                     if args[i].ty != fn_params[i] && !fn_params[i].can_infer(&args[i].ty) {

@@ -1,7 +1,6 @@
+use common::types::Type;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use string_cache::DefaultAtom as Atom;
-use tcast::types::Type as TcAstType;
-use tcast::types::Type;
 
 #[derive(Debug, Default)]
 pub struct TypeResolver {
@@ -13,7 +12,7 @@ impl TypeResolver {
         self.types.borrow().get(ty).cloned()
     }
 
-    pub fn insert(&self, alias: Atom, ty: TcAstType) -> bool {
+    pub fn insert(&self, alias: Atom, ty: Type) -> bool {
         self.types.borrow_mut().insert(ty, alias).is_some()
     }
 }

@@ -1,5 +1,5 @@
 use crate::{expr::Expression, types::Type};
-use common::effects::Effect;
+use common::{effects::Effect, module::ModuleId};
 use string_cache::DefaultAtom as Atom;
 
 #[derive(Debug, Clone)]
@@ -67,4 +67,5 @@ pub struct Namespace {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub path: Vec<Atom>,
+    pub module_id: Option<ModuleId>,
 }

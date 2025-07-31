@@ -26,10 +26,9 @@ fn{io} println(s: string) = {
 - ✅ Functional First: Pure functions, flexible expressions.
 - 🛡️ Statically Typed: Catch errors at compile time with type inference.
 - 🧼 Pure by Default: Only effect functions can perform side effects.
-- 🔧 Rust-like Syntax: Familiar to Rust developers — clean, expressive, and safe. No borrow checker.
-- ⚡ Transpiles to JavaScript: Runs anywhere JS does — browsers, Node.js, Deno, etc.
+- 🔧 Rust-like Syntax: Familiar to Rust developers - clean, expressive, and safe. No borrow checker.
+- ⚡ Transpiles to JavaScript: Runs anywhere JS does - browsers, Node.js, Deno, etc.
 - 📦 Zero Runtime: Generated code has no Whisper-specific runtime dependencies.
-- 🧪 Pattern Matching, Immutability, Algebraic Types — all the FP goodness (probably in the future).
 
 ## 🚀 Getting Started
 

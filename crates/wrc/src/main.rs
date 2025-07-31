@@ -1,17 +1,13 @@
-use std::{env, fs};
-
-use pipeline::CompilationPipeline;
+use clap::Parser;
+use wrc::{
+    args::{Args, Commands},
+    commands::compile,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = env::args().nth(1).unwrap();
-    let contents = fs::read_to_string(&path)?;
+    let args = Args::parse();
 
-    let pipeline = CompilationPipeline::default();
-    let output = pipeline.compile_module(contents)?;
-
-    let (outpath, _) = path.rsplit_once(".").unwrap();
-    let outpath = format!("{outpath}.js");
-    fs::write(outpath, output.as_bytes())?;
-
-    Ok(())
+    match args.command {
+        Commands::Compile { filename } => compile::run(filename),
+    }
 }

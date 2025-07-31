@@ -15,7 +15,7 @@ pub struct ExternalModule {
     pub module_path: Vec<Atom>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     symbols: RefCell<HashMap<Atom, ModuleSymbol>>,
 }
@@ -33,13 +33,13 @@ impl SymbolTable {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ModuleSymbol {
     pub visibility: Visibility,
     pub ty: Type,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Visibility {
     Public,
     Private,

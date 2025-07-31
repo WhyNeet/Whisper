@@ -1,10 +1,4 @@
-fn{io} println(s: String) = {
-  namespace console {
-    extern fn{io} log(args: String);
-  }
-
-  console.log(s);
-}
+import io;
 
 struct UnsignedInt {
   inner: UInt;
@@ -14,15 +8,15 @@ impl UnsignedInt {
   pub fn new(inner: UInt) -> UnsignedInt = UnsignedInt { inner: inner }
 
   pub fn to_string(self: UnsignedInt) -> String = {
-    extern fn{io} String(from: UInt) -> String;
+    extern fn String(from: UInt) -> String;
 
     String(self.inner)
   }
 }
 
-@main fn{io, mut} main() = {
+fn{io, mut} main() = {
   let mut value: UInt = 15;
   value = 16;
   let mut my_uint = UnsignedInt::new(value);
-  println("The number is: " + UnsignedInt::to_string(my_uint) + ".");
+  io.println("The number is: " + UnsignedInt::to_string(my_uint) + ".");
 }

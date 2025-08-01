@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::ast::expr::Expression;
 use string_cache::DefaultAtom as Atom;
 
@@ -28,5 +30,5 @@ pub enum Statement {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub name: Atom,
-    pub path: Atom,
+    pub path: PathBuf,
 }

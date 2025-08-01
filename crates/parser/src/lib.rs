@@ -122,6 +122,7 @@ impl<'a> Parser<'a> {
         self.matches(TokenKind::Semi).expect("Expected semicolon");
 
         Statement::Import(Box::new(Import {
+            alias: path.last().unwrap().clone(),
             path,
             module_id: None,
         }))

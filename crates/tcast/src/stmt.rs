@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::expr::TypedExpression;
 use common::effects::Effect;
 use common::module::ModuleId;
@@ -67,4 +69,6 @@ pub struct Namespace {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub module_id: ModuleId,
+    pub path: PathBuf,
+    pub alias: Atom,
 }

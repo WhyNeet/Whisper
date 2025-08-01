@@ -68,4 +68,5 @@ pub struct Namespace {
 pub struct Import {
     pub path: Vec<Atom>,
     pub module_id: Option<ModuleId>,
+    pub alias: Atom,
 }

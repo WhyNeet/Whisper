@@ -71,7 +71,11 @@ impl Codegen {
                 format!("export {stmt};")
             }
             Statement::Import(import) => {
-                format!("import*as {} from\"./{}.js\";", import.name, import.path)
+                format!(
+                    "import*as {} from\"./{}.js\";",
+                    import.name,
+                    import.path.to_str().unwrap()
+                )
             }
         }
     }

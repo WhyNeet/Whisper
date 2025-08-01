@@ -11,5 +11,5 @@ pub struct Module {
 #[derive(Debug)]
 pub struct Dependency {
     pub module_id: ModuleId,
-    pub path: Vec<Atom>,
+    pub relative_path: Vec<Atom>,
 }

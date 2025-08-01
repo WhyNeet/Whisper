@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 ast = { path = "../ast" }
 common = { path = "../common" }
+string_cache = "0.8.9"

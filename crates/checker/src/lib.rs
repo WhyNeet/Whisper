@@ -1,7 +1,7 @@
 pub mod resolver;
 pub mod scope;
 
-use std::{cell::RefCell, collections::HashSet, iter, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashSet, iter, path::PathBuf, rc::Rc, sync::Arc};
 use string_cache::DefaultAtom as Atom;
 
 use ast::{
@@ -101,16 +101,16 @@ impl Checker {
     }
 
     fn import_stmt(&self, import: Import) -> TypedStatement {
-        let Import { module_id, .. } = import;
+        let Import {
+            module_id,
+            alias,
+            path,
+        } = import;
         let module_id = module_id.unwrap();
 
         let module = self.registry.get(&module_id).unwrap().unwrap();
 
-        let namespace = self
-            .scope
-            .borrow()
-            .create_namespace(module.name.clone())
-            .unwrap();
+        let namespace = self.scope.borrow().create_namespace(alias.clone()).unwrap();
 
         let f = |(name, symbol): (&Atom, &ModuleSymbol)| {
             if symbol.visibility.is_public() {
@@ -121,7 +121,14 @@ impl Checker {
         module.symbols.pairs(Box::new(f));
 
         TypedStatement {
-            stmt: Statement::Import(Box::new(TImport { module_id })),
+            stmt: Statement::Import(Box::new(TImport {
+                module_id,
+                alias,
+                path: path.into_iter().fold(PathBuf::new(), |mut acc, val| {
+                    acc.push(val.as_ref());
+                    acc
+                }),
+            })),
             effects: vec![],
         }
     }

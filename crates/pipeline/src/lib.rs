@@ -20,13 +20,34 @@ pub struct CompilationPipeline {
 }
 
 impl CompilationPipeline {
+    fn resolve_module_path(
+        &self,
+        module_parts: &[Atom],
+        root_dir: &Path,
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let mut path = root_dir.to_path_buf();
+
+        for part in module_parts {
+            path.push(part.as_ref());
+        }
+
+        let candidates = [path.join("mod.wr"), path.with_extension("wr")];
+
+        for candidate in candidates {
+            if candidate.exists() {
+                return Ok(candidate);
+            }
+        }
+
+        Err("Module not found.".into())
+    }
+
     pub fn compile_module(
         &self,
         contents: String,
-        name: &str,
         root_dir: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let artifacts = self.parse_and_resolve_module(contents, Atom::from(name), root_dir)?;
+        let artifacts = self.parse_and_resolve_module(contents, Atom::from("index"), root_dir)?;
 
         for artifact in artifacts {
             let codegen = JsTypedAstTransformer::new(Arc::clone(&self.registry));
@@ -45,41 +66,34 @@ impl CompilationPipeline {
     pub fn parse_and_resolve_module(
         &self,
         contents: String,
-        name: Atom,
+        module_name: Atom,
         root_dir: &Path,
     ) -> Result<Vec<Artifact>, Box<dyn std::error::Error>> {
         let token_stream = TokenStream::new(&contents);
         let mut module = Parser::new(token_stream).run();
-        ModuleResolver::new(Arc::clone(&self.registry)).run(&mut module);
+        ModuleResolver::new(Arc::clone(&self.registry)).run(&mut module, root_dir);
 
         let mut artifacts = vec![];
 
         for dep in module.dependencies.iter() {
-            let actual_path = dep
-                .path
-                .iter()
-                .fold(PathBuf::new(), |acc, unit| acc.join(unit.as_ref()));
-            let mut actual_path = root_dir.join(actual_path);
-            if actual_path.is_dir() {
-                actual_path.push("mod.wr");
-            } else {
-                actual_path.set_file_name(format!(
-                    "{}.wr",
-                    actual_path.file_name().unwrap().to_str().unwrap()
-                ));
-            }
-            let contents = fs::read_to_string(actual_path)?;
+            let module_path = self.resolve_module_path(&dep.relative_path, root_dir)?;
+            let contents = fs::read_to_string(&module_path)?;
 
             let mut dep_artifacts = self.parse_and_resolve_module(
                 contents,
-                dep.path.last().unwrap().clone(),
-                root_dir,
+                if module_path.file_stem().unwrap().eq("mod") {
+                    Atom::from("index")
+                } else {
+                    dep.relative_path.last().unwrap().clone()
+                },
+                module_path.parent().unwrap(),
             )?;
             let artifact = dep_artifacts.last().unwrap();
             let module = ExternalModule {
-                name: dep.path.last().unwrap().clone(),
+                id: dep.module_id,
+                name: artifact.name.clone(),
                 symbols: artifact.module.symbols.clone(),
-                module_path: dep.path.clone(),
+                module_path: dep.relative_path.clone(),
             };
             artifacts.append(&mut dep_artifacts);
 
@@ -87,7 +101,7 @@ impl CompilationPipeline {
         }
 
         artifacts.push(Artifact {
-            name,
+            name: module_name,
             parent_dir: root_dir.to_path_buf(),
             module: Checker::new(Arc::clone(&self.registry)).run(module),
         });
@@ -96,6 +110,7 @@ impl CompilationPipeline {
     }
 }
 
+#[derive(Debug)]
 pub struct Artifact {
     pub name: Atom,
     pub parent_dir: PathBuf,

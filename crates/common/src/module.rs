@@ -10,6 +10,7 @@ use crate::types::Type;
 
 #[derive(Debug)]
 pub struct ExternalModule {
+    pub id: ModuleId,
     pub name: Atom,
     pub symbols: SymbolTable,
     pub module_path: Vec<Atom>,
@@ -63,6 +64,12 @@ pub struct ModuleId(u64);
 impl ModuleId {
     pub fn new_sequential() -> Self {
         Self(ID_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+impl From<u64> for ModuleId {
+    fn from(value: u64) -> Self {
+        Self(value)
     }
 }
 

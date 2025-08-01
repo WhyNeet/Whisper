@@ -290,6 +290,7 @@ version = "0.1.0"
 dependencies = [
  "ast",
  "common",
+ "string_cache",
 ]
 
 [[package]]

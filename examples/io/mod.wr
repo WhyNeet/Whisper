@@ -1,7 +1,3 @@
-pub fn{io} println(s: String) = {
-  namespace console {
-    extern fn{io} log(args: String);
-  }
+import stdout;
 
-  console.log(s);
-}
+pub fn{io} println(s: String) = stdout.println(s);

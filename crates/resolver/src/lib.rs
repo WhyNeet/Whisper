@@ -55,7 +55,7 @@ impl ModuleResolver {
 
                 if !fs_path.join(&relative_path).with_extension("wr").exists() {
                     println!("rel path: {:?}", fs_path.join(&relative_path));
-                    path.push(Atom::from("index"));
+                    path.push(Atom::from("mod"));
                 }
             }
             _ => (),

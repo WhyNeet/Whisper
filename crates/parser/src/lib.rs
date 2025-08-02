@@ -67,6 +67,8 @@ impl<'a> Parser<'a> {
                 self.fn_decl(true, true)
             } else if self.matches(TokenKind::Keyword(Keyword::Struct)).is_some() {
                 self.struct_decl(true)
+            } else if self.matches(TokenKind::Keyword(Keyword::Import)).is_some() {
+                self.import_stmt(true)
             } else {
                 panic!("`pub` keyword can only be applied to function or struct declaration.")
             }
@@ -100,13 +102,13 @@ impl<'a> Parser<'a> {
         {
             self.namespace_stmt()
         } else if self.matches(TokenKind::Keyword(Keyword::Import)).is_some() {
-            self.import_stmt()
+            self.import_stmt(false)
         } else {
             self.expr_stmt()
         }
     }
 
-    fn import_stmt(&mut self) -> Statement {
+    fn import_stmt(&mut self, is_pub: bool) -> Statement {
         let ident = self.matches(TokenKind::Ident).expect("Expected identifier");
         let ident = Atom::from(&self.token_stream.source()[ident.start..ident.end]);
 
@@ -125,6 +127,7 @@ impl<'a> Parser<'a> {
             alias: path.last().unwrap().clone(),
             path,
             module_id: None,
+            is_pub,
         }))
     }
 

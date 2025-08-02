@@ -71,4 +71,5 @@ pub struct Import {
     pub module_id: ModuleId,
     pub path: PathBuf,
     pub alias: Atom,
+    pub is_pub: bool,
 }

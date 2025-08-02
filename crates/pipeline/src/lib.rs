@@ -82,7 +82,7 @@ impl CompilationPipeline {
             let mut dep_artifacts = self.parse_and_resolve_module(
                 contents,
                 if module_path.file_stem().unwrap().eq("mod") {
-                    Atom::from("index")
+                    Atom::from("mod")
                 } else {
                     dep.relative_path.last().unwrap().clone()
                 },

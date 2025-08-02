@@ -2,7 +2,7 @@ use common::types::Type;
 use std::cell::RefCell;
 use string_cache::DefaultAtom as Atom;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Namespace {
     pub(crate) members: RefCell<Vec<(Atom, Type)>>,
 }

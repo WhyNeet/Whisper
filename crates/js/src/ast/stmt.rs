@@ -24,11 +24,18 @@ pub enum Statement {
         expr: Expression,
     },
     Export(Box<Statement>),
+    ExportAllAs(Box<ExportAllAs>),
     Import(Box<Import>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Import {
+    pub name: Atom,
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExportAllAs {
     pub name: Atom,
     pub path: PathBuf,
 }

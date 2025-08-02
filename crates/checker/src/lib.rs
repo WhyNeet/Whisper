@@ -105,6 +105,7 @@ impl Checker {
             module_id,
             alias,
             path,
+            is_pub,
         } = import;
         let module_id = module_id.unwrap();
 
@@ -120,6 +121,21 @@ impl Checker {
 
         module.symbols.pairs(Box::new(f));
 
+        self.symbol_table.insert(
+            alias.clone(),
+            ModuleSymbol {
+                visibility: if is_pub {
+                    Visibility::Public
+                } else {
+                    Visibility::Private
+                },
+                ty: TcAstType::Namespace {
+                    alias: alias.clone(),
+                    fields: namespace.as_ref().clone().take_members(),
+                },
+            },
+        );
+
         TypedStatement {
             stmt: Statement::Import(Box::new(TImport {
                 module_id,
@@ -128,6 +144,7 @@ impl Checker {
                     acc.push(val.as_ref());
                     acc
                 }),
+                is_pub,
             })),
             effects: vec![],
         }
@@ -658,7 +675,10 @@ impl Checker {
                         .map(|(_, ty)| ScopeValueData { ty, is_mut })
                         .or_else(|| scope.get(&ident))
                     else {
-                        panic!("Expression does not contain member `{ident}`");
+                        panic!(
+                            "Expression `{:?}` does not contain member `{ident}`",
+                            expr.expr
+                        );
                     };
 
                     let expr = Expression::MemberAccess {

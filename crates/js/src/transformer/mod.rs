@@ -21,7 +21,7 @@ use crate::{
         literal::Literal,
         ops::{BinaryOperator, UnaryOperator},
         program::Program,
-        stmt::{Import as JsImport, Statement},
+        stmt::{ExportAllAs, Import as JsImport, Statement},
     },
     transformer::resolver::TypeResolver,
 };
@@ -29,14 +29,14 @@ use crate::{
 #[derive(Debug)]
 pub struct TypedAstTransformer {
     type_resolver: RefCell<Rc<TypeResolver>>,
-    registry: Arc<ModuleRegistry>,
+    _registry: Arc<ModuleRegistry>,
 }
 
 impl TypedAstTransformer {
     pub fn new(registry: Arc<ModuleRegistry>) -> Self {
         Self {
             type_resolver: Default::default(),
-            registry,
+            _registry: registry,
         }
     }
 
@@ -102,20 +102,33 @@ impl TypedAstTransformer {
                 })
                 .collect(),
             TStatement::Namespace { .. } => vec![],
-            TStatement::Import(import) => vec![self.import(*import)],
+            TStatement::Import(import) => self.import(*import),
         }
     }
 
-    fn import(&self, import: Import) -> Statement {
+    fn import(&self, import: Import) -> Vec<Statement> {
         let Import {
-            module_id,
             alias,
             path,
+            is_pub,
+            ..
         } = import;
 
         // let module = self.registry.get(&module_id).unwrap().unwrap();
 
-        Statement::Import(Box::new(JsImport { name: alias, path }))
+        let mut stmts = vec![Statement::Import(Box::new(JsImport {
+            name: alias.clone(),
+            path: path.clone(),
+        }))];
+
+        if is_pub {
+            stmts.push(Statement::ExportAllAs(Box::new(ExportAllAs {
+                name: alias,
+                path,
+            })));
+        }
+
+        stmts
     }
 
     fn struct_declaration(&self, str: StructDeclaration) -> Statement {

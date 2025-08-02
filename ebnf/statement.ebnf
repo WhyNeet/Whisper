@@ -17,4 +17,4 @@ impl_stmt = "impl" IDENTIFIER "{"
   { [ "pub" ] "fn" IDENTIFIER "(" fn_params ")" [ "->" TYPE ] "=" expression }
 "}" ;
 
-import_stmt = "import" IDENTIFIER { "::" IDENTIFIER } ";"
+import_stmt = [ "pub" ] "import" IDENTIFIER { "::" IDENTIFIER } ";"
